@@ -1,38 +1,41 @@
 (
 ~plotwidth = 500;
 ~plotheight = 130;
-~win = Window("plot panel", Rect(20, 30, (~plotwidth * 2) + 40, 600)).front;
-~dataView1 = CompositeView(~win, Rect(10, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2) + 40, 600)).front;
+
+~ratioSlider = Slider(~win, Rect(10, 10, 15, 520));
+
+~dataView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~dataPlot1 = Plotter("plot", parent: ~dataView1).value_({0}!1 * 100);
 ~dataPlot1.plotMode = \points;
 
-~meanView1 = CompositeView(~win, Rect(10, 10 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~meanView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~meanPlot1 = Plotter("plot", parent: ~meanView1).value_({0}!1 * 100);
 ~meanPlot1.plotMode = \points;
 
-~medianView1 = CompositeView(~win, Rect(10, 10 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~medianView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~medianPlot1 = Plotter("plot", parent: ~medianView1).value_({0}!1 * 100);
 ~medianPlot1.plotMode = \points;
 
-~medianSmoothView1 = CompositeView(~win, Rect(10, 10 + (~plotheight* 3), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~medianSmoothView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 3), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~medianSmoothPlot1 = Plotter("plot", parent: ~medianSmoothView1).value_({0}!1 * 100);
 ~medianSmoothPlot1.plotMode = \points;
 
 
 
-~dataView2 = CompositeView(~win, Rect(~plotwidth + 20, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~dataView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~dataPlot2 = Plotter("plot", parent: ~dataView2).value_({0}!1 * 100);
 ~dataPlot2.plotMode = \points;
 
-~meanView2 = CompositeView(~win, Rect(~plotwidth + 20, 10 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~meanView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~meanPlot2 = Plotter("plot", parent: ~meanView2).value_({0}!1 * 100);
 ~meanPlot2.plotMode = \points;
 
-~medianView2 = CompositeView(~win, Rect(~plotwidth + 20, 10 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~medianView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~medianPlot2 = Plotter("plot", parent: ~medianView2).value_({0}!1 * 100);
 ~medianPlot2.plotMode = \points;
 
-~medianSmoothView2 = CompositeView(~win, Rect(~plotwidth + 20, 10 + (~plotheight* 3), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~medianSmoothView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 3), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~medianSmoothPlot2 = Plotter("plot", parent: ~medianSmoothView2).value_({0}!1 * 100);
 ~medianSmoothPlot2.plotMode = \points;
 
@@ -83,7 +86,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	~meanPlot1.value_(~meanArray1);
 	~medianPlot1.value_(~medianArray1);
 	~medianSmoothPlot1.value_(~medianSmoothArray1);
-	w.refresh;
+	~win.refresh;
 	}.defer;
 
 }, '/delay1', n);
@@ -121,7 +124,9 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	~meanPlot2.value_(~meanArray2);
 	~medianPlot2.value_(~medianArray2);
 	~medianSmoothPlot2.value_(~medianSmoothArray2);
-	w.refresh;
+
+		~ratioSlider.value_((~medianSmoothArray2[0] / ~medianSmoothArray1[0]).linlin(0.9, 1.10, 0.0, 1.0) );
+	~win.refresh;
 	}.defer;
 
 }, '/delay2', n);
