@@ -1,4 +1,10 @@
 (
+
+
+//~ip = "169.254.130.74";
+// ~ip = "127.0.0.1";
+~ip = "10.0.1.12";
+
 ~plotwidth = 500;
 ~plotheight = 120;
 ~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2.1) + 40, 600)).front;
@@ -59,7 +65,7 @@
 
 ~percentile = 0.9;
 
-n = NetAddr("127.0.0.1", 57120); // local machine
+n = NetAddr(~ip, 57120); // local machine
 
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
@@ -111,7 +117,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	~win.refresh;
 	}.defer;
 
-}, '/delay1', n);
+}, '/tc1', n);
 
 
 OSCFunc.newMatching({|msg, time, addr, recvPort|
@@ -123,7 +129,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	~smoothMedian2 = 0;
 	~alpha = 0.9;
 
-	~sentTimeDeltaLocal_2 = time - SystemClock.seconds;
+	~sentTimeDeltaLocal_2 = time - SystemClock.seconds - 0.02;
 
 	~lastTime2 = time;
 
@@ -162,27 +168,30 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	~win.refresh;
 	}.defer;
 
-}, '/delay2', n);
+}, '/tc2', n);
 
+)
 
-m = NetAddr("127.0.0.1", 57120); // loopback
+(
+m = NetAddr( ~ip, 57120); // loopback
 
 ~t1 = Task({
     inf.do({
-       m.sendMsg("/delay1", SystemClock.seconds);
+       m.sendMsg("/tc1", SystemClock.seconds);
 		        (30.reciprocal).wait;
     });
 }).start;
 
 ~t2 = Task({
     inf.do({
-       m.sendMsg("/delay2", SystemClock.seconds);
+       m.sendMsg("/tc2", SystemClock.seconds);
 		        (30.reciprocal + 0.001).wait;
     });
 }).start;
 )
 
-
+~t1.stop;
+~t2.stop;
 
 
 a = Date.getDate;
