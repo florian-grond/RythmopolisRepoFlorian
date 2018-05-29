@@ -150,8 +150,6 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 		        (30.reciprocal + 0.01).wait;
     });
 }).start;
-
-
 )
 
 
