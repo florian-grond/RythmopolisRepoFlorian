@@ -1,43 +1,73 @@
 (
 // ~ip = "169.254.130.74";
-~ip = "127.0.0.1";
+// ~ip = "127.0.0.1";
 // ~ip = "10.0.1.12";
 // ~ip = nil;
 
+~percentile = 0.9;
 
 ~plotwidth = 500;
 ~plotheight = 120;
 ~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2.1) + 40, 600)).front;
 
-~percentileSlider = Slider(~win, Rect(10, 10, 15, 520));
-~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0) });
+~ezSlider = EZSlider( ~win,         // parent
+              Rect(50, 70 + (~plotheight* 4), 600, 20),    // bounds
+              "delay",  // label
+              ControlSpec(0, 10, \lin, 0.01, 5),     // controlSpec
+              { |ez| (ez.value.asString ++" is the value of " ++ ez).postln } // action
+).setColors(Color.grey,Color.white);
 
-~dataView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+
+
+~counter = 0;
+
+~delayMover = Task({
+    inf.do({
+		~counter = ~counter + 1; if(~counter >= 1000,{~counter = 0});
+		// ~counter.postln;
+		{~ezSlider.value_(~counter.linlin(0, 1000, 0, 2pi).sin.linlin(-1,1, 0,10));}.defer;
+		0.1.wait;
+    });
+}).start;
+
+
+~percentileSlider = Slider(~win, Rect(10, 10, 25, 400));
+~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0); ~percentileNumber.value = sl.value.linlin(0.0, 1.0, 0.0, 1.0); });
+~percentileNumber =     NumberBox(~win, Rect(10, 410, 35, 25)).value_(~percentile);
+
+~percentileSlider.value_(~percentile);
+
+~text1 = TextField(~win, Rect(50, 10, 300, 20)).background_(Color.gray).string_("OSC timestamp1 - local time");
+~dataView1 = CompositeView(~win, Rect(50, 30 + (~plotheight* 0), ~plotwidth, ~plotheight));
 ~dataPlot1 = Plotter("plot", parent: ~dataView1).value_({0}!1 * 100);
 ~dataPlot1.plotMode = \points;
 
-~percentileView1 = CompositeView(~win, Rect(30, 30 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~text2 = TextField(~win, Rect(50, 30 + (~plotheight* 1), 300, 20)).background_(Color.gray).string_("filtered accroding to percentile");
+~percentileView1 = CompositeView(~win, Rect(50, 50 + (~plotheight* 1), ~plotwidth, ~plotheight));
 ~percentilePlot1 = Plotter("plot", parent: ~percentileView1).value_({0}!1 * 100);
 ~percentilePlot1.plotMode = \points;
 
-~dataView2 = CompositeView(~win, Rect(~plotwidth + 50, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~text3 = TextField(~win, Rect(~plotwidth + 60, 10 + (~plotheight* 0), 300, 20)).background_(Color.gray).string_("OSC timestamp2 - local time");
+~dataView2 = CompositeView(~win, Rect(~plotwidth + 60, 30 + (~plotheight* 0), ~plotwidth, ~plotheight));
 ~dataPlot2 = Plotter("plot", parent: ~dataView2).value_({0}!1 * 100);
 ~dataPlot2.plotMode = \points;
 
-~percentileView2 = CompositeView(~win, Rect(~plotwidth + 50, 30 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~text4 = TextField(~win, Rect(~plotwidth + 60, 30 + (~plotheight* 1), 300, 20)).background_(Color.gray).string_("filtered accroding to percentile");
+~percentileView2 = CompositeView(~win, Rect(~plotwidth + 60, 50 + (~plotheight* 1), ~plotwidth, ~plotheight));
 ~percentilePlot2 = Plotter("plot", parent: ~percentileView2).value_({0}!1 * 100);
 ~percentilePlot2.plotMode = \points;
 
-~deltaDeltaView1 = CompositeView(~win, Rect(30, 40 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~text5 = TextField(~win, Rect(50, 70 + (~plotheight* 2), 300, 20)).background_(Color.gray).string_("Delt1 - Delta2");
+~deltaDeltaView1 = CompositeView(~win, Rect(50, 90 + (~plotheight* 2), ~plotwidth, ~plotheight));
 ~deltaDeltaPlot1 = Plotter("plot", parent: ~deltaDeltaView1).value_({0}!1 * 100);
 ~deltaDeltaPlot1.plotMode = \points;
 
-~timeStampArray1 = List.new;
-~filteredArray1 = List.new;
-~deltadeltaArray1 = List.new;
+~timeStampArray1 = {0}!~timeWindow;
+~filteredArray1 = {0}!~timeWindow;
+~deltadeltaArray1 = {0}!~timeWindow;
 
-~timeStampArray2 = List.new;
-~filteredArray2 = List.new;
+~timeStampArray2 = {0}!~timeWindow;
+~filteredArray2 = {0}!~timeWindow;
 
 ~lastTime1 = 0; ~lastTime2 = 0;
 
@@ -140,7 +170,7 @@ s.waitForBoot({ // Boot the server, if you need to
 	in = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop:1, doneAction:2);
 		delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
 	delayLine2 = BufDelayL.ar(delaybuf, in, delay2, mute2);
-		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.1));
+		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.01));
 		Out.ar(out, HPF.ar(faded, 50 ))
 }).add;
 s.sync;
@@ -171,21 +201,22 @@ s.sync;
 ~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1)
 
 ~delaySynth.set(\delay1, 0.00);
-~delaySynth.set(\delay2, 0.03);
+~delaySynth.set(\delay2, 0.001);
 
 (
 ~switcher = Task({
     inf.do({
 		~delaySynth.set(\mute1, 1, \mute2, 0, \pan, -1 );
 		"now".postln;
-		2.0.wait;
+		0.4.wait;
 		~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1);
 		"now".postln;
-		2.0.wait;
+		0.4.wait;
     });
 }).start;
 )
 
+~switcher.stop
 s.scope
 
 (
