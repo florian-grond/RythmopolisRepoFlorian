@@ -108,6 +108,31 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 /******************** LAUNCH AUDIO  ****************************/
 
 (
+
+
+s = Server.local; // Server.internal;
+Server.scsynth;
+ServerOptions.devices;  // this line lists all available audio devices
+Server.local = Server.default; // set the launched server to be the default server to make sure the masseages go to the right place
+o = Server.local.options; // Get the local server's options
+
+// check what is listed as output from ServerOptions.devices and set the device correctly
+// o.device = nil;  // o.device = "MADIface USB (23631679)";
+
+// o.numInputBusChannels = 1; // Set nuber of input channels
+// o.numOutputBusChannels = 11; // Set nuber of output channels
+// o.numInputBusChannels.postln; // Post the number of input channels
+// o.numOutputBusChannels.postln; // Post the number of output channels
+
+o.numAudioBusChannels = 2048 * 8; // these are the internal max number of audiobusses
+o.blockSize = 512 ; // the blocksize
+o.numWireBufs = 1024 * 16; // number of wired buffers
+o.memSize = 2.pow(18); // the memory of the server
+o.sampleRate = 48000;
+o.threads_(16); // the number of threads supernova is using
+s.makeWindow; // make a Window
+s.scope(9, 0, 4096, 2); // make a scope with 9 channels starting at channel 0, window
+
 s.waitForBoot({ // Boot the server, if you need to
 
 	SynthDef(\help_PlayBuf, {| out = 0, bufnum = 0, delaybuf, delay1 = 0.1, delay2 = 0.1, mute1 = 1, mute2 = 0, pan = 1, level =1|
