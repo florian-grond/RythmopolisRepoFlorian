@@ -6,8 +6,9 @@
 
 
 ~inBus = 0;
-
 ~outBus = 0;
+
+~outputGain = 0.1; // carefull this generatyes FEEDBACK
 
 ~percentile = 0.9;
 
@@ -19,7 +20,9 @@
               Rect(50, 70 + (~plotheight* 4), 600, 20),    // bounds
               "delay",  // label
               ControlSpec(0, 10, \lin, 0.01, 5),     // controlSpec
-              { |ez| (ez.value.asString ++" is the value of " ++ ez).postln } // action
+              { |ez| (ez.value.asString ++" is the value of " ++ ez).postln;
+		~changeDelay.(ez.value);
+	} // action
 ).setColors(Color.grey,Color.white);
 
 
@@ -35,6 +38,8 @@
     });
 }).start;
 
+~delayMover.stop;
+~delayMover.start;
 
 ~percentileSlider = Slider(~win, Rect(10, 10, 25, 400));
 ~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0); ~percentileNumber.value = sl.value.linlin(0.0, 1.0, 0.0, 1.0); });
@@ -138,11 +143,12 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 }, '/tc2', nil);
 
 
-)
+
+
+
 
 /******************** LAUNCH AUDIO  ****************************/
 
-(
 
 
 s = Server.local; // Server.internal;
@@ -153,6 +159,8 @@ o = Server.local.options; // Get the local server's options
 
 // check what is listed as output from ServerOptions.devices and set the device correctly
 // o.device = nil;  // o.device = "MADIface USB (23631679)";
+
+// o.device = "MADIface USB (23631679)"; // evaluate the command ServerOptions.devices; some lines above to see what is available.
 
 // o.numInputBusChannels = 1; // Set nuber of input channels
 // o.numOutputBusChannels = 11; // Set nuber of output channels
@@ -176,24 +184,60 @@ s.waitForBoot({ // Boot the server, if you need to
 		in = SoundIn.ar(~inBus);
 	delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
 	delayLine2 = BufDelayL.ar(delaybuf, in, delay2, mute2);
-		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.005));
+		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.3));
 		Out.ar(~outBus, HPF.ar(faded, 50 ))
 }).add;
 s.sync;
 
-~delayBuffer = Buffer.alloc(s,44100 * 10,1);
+~delayBuffer = Buffer.alloc(s,44100 * 20,1);
 
 ~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav", action:
 		{~delaySynth = Synth.new(\help_PlayBuf, [\bufnum, ~buffer.bufnum, \delaybuf, ~delayBuffer.bufnum, \delay1, 0.2]);}
 	); // remember to free the buffer later.
 s.sync;
 
+~delaySynth.set(\delay1, 0.00);
+~delaySynth.set(\delay2, 0.05);
+
+
+~delaySynth.set(\mute1, ~outputGain, \mute2, 0, \pan, -1 )
+
 
 }.fork;
 
-)
+);
+
+~switcherState = 1;
+
+~changeDelay = {|delay|
+
+	case{~switcherState == 1}
+	{
+		~switcherState.postln;
+		~delaySynth.set(\delay1, delay);
+		~delaySynth.set(\mute1, 1, \mute2, 0, \pan, -1 );
+	}
+	{~switcherState == -1}
+	{
+		~switcherState.postln;
+		~delaySynth.set(\delay2, delay);
+		~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1 );
+
+	};
+
+	~switcherState = ~switcherState * -1;
+
+}
+
+
+
 
 )
+
+~changeDelay.(2);
+~changeDelay.(1);
+~changeDelay.(0.1);
+
 
 /******************** LAUNCH AUDIO  ****************************/
 
