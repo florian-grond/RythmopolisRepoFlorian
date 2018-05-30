@@ -1,160 +1,207 @@
 (
-~plotwidth = 500;
-~plotheight = 130;
-~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2) + 40, 600)).front;
+// ~ip = "169.254.130.74";
+~ip = "127.0.0.1";
+// ~ip = "10.0.1.12";
+// ~ip = nil;
 
-~ratioSlider = Slider(~win, Rect(10, 10, 15, 520));
+
+~plotwidth = 500;
+~plotheight = 120;
+~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2.1) + 40, 600)).front;
+
+~percentileSlider = Slider(~win, Rect(10, 10, 15, 520));
+~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0) });
 
 ~dataView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~dataPlot1 = Plotter("plot", parent: ~dataView1).value_({0}!1 * 100);
 ~dataPlot1.plotMode = \points;
 
-~meanView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
-~meanPlot1 = Plotter("plot", parent: ~meanView1).value_({0}!1 * 100);
-~meanPlot1.plotMode = \points;
+~percentileView1 = CompositeView(~win, Rect(30, 30 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~percentilePlot1 = Plotter("plot", parent: ~percentileView1).value_({0}!1 * 100);
+~percentilePlot1.plotMode = \points;
 
-~medianView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
-~medianPlot1 = Plotter("plot", parent: ~medianView1).value_({0}!1 * 100);
-~medianPlot1.plotMode = \points;
-
-~medianSmoothView1 = CompositeView(~win, Rect(30, 10 + (~plotheight* 3), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
-~medianSmoothPlot1 = Plotter("plot", parent: ~medianSmoothView1).value_({0}!1 * 100);
-~medianSmoothPlot1.plotMode = \points;
-
-
-
-~dataView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~dataView2 = CompositeView(~win, Rect(~plotwidth + 50, 10 + (~plotheight* 0), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
 ~dataPlot2 = Plotter("plot", parent: ~dataView2).value_({0}!1 * 100);
 ~dataPlot2.plotMode = \points;
 
-~meanView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
-~meanPlot2 = Plotter("plot", parent: ~meanView2).value_({0}!1 * 100);
-~meanPlot2.plotMode = \points;
+~percentileView2 = CompositeView(~win, Rect(~plotwidth + 50, 30 + (~plotheight* 1), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~percentilePlot2 = Plotter("plot", parent: ~percentileView2).value_({0}!1 * 100);
+~percentilePlot2.plotMode = \points;
 
-~medianView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
-~medianPlot2 = Plotter("plot", parent: ~medianView2).value_({0}!1 * 100);
-~medianPlot2.plotMode = \points;
-
-~medianSmoothView2 = CompositeView(~win, Rect(~plotwidth + 30, 10 + (~plotheight* 3), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
-~medianSmoothPlot2 = Plotter("plot", parent: ~medianSmoothView2).value_({0}!1 * 100);
-~medianSmoothPlot2.plotMode = \points;
-
+~deltaDeltaView1 = CompositeView(~win, Rect(30, 40 + (~plotheight* 2), ~plotwidth, ~plotheight)).background_(Color.rand(0.7)).resize_(5);
+~deltaDeltaPlot1 = Plotter("plot", parent: ~deltaDeltaView1).value_({0}!1 * 100);
+~deltaDeltaPlot1.plotMode = \points;
 
 ~timeStampArray1 = List.new;
-~meanArray1 = List.new;
-~medianArray1 = List.new;
-~medianSmoothArray1 = List.new;
+~filteredArray1 = List.new;
+~deltadeltaArray1 = List.new;
 
 ~timeStampArray2 = List.new;
-~meanArray2 = List.new;
-~medianArray2 = List.new;
-~medianSmoothArray2 = List.new;
+~filteredArray2 = List.new;
 
+~lastTime1 = 0; ~lastTime2 = 0;
 
-n = NetAddr("127.0.0.1", 57120); // local machine
+~sentTimeDeltaLocal_2 = 0; ~sentTimeDeltaLocal_1 = 0;
+
+~percentile = 0.9;
+
+n = NetAddr(~ip, 57120); // local machine
+
+~timeWindow = 380;
+~alpha = 0.98;
+
 
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
-~timeWindow = 380;
-	~alpha = 0.98;
+	~sentTimeDeltaLocal_1 = time - SystemClock.seconds;
+	~lastTime1 = time;
 
-//	time.postln;
-//	msg[1].postln;
-//	SystemClock.seconds.postln;
+	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); // add incoming value
+	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  }); // pop the last when time window is reached
 
-	~timeStampArray1.addFirst(time - SystemClock.seconds);
-	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop; ~timeStampArray1[~timeStampArray1.size-1] = 0; });
-    ~meanArray1.addFirst(~timeStampArray1.mean);
-	if( ~meanArray1.size > ~timeWindow, {~meanArray1.pop;  ~meanArray1[~meanArray1.size-1] = 0;});
-	~medianArray1.addFirst(~timeStampArray1.median);
-	if( ~medianArray1.size > ~timeWindow, {~medianArray1.pop; /*~medianArray1[~medianArray1.size-1] = 0;*/});
+	if( ~sentTimeDeltaLocal_1.abs < ~timeStampArray1.abs.percentile(~percentile)
 
-	if(~medianSmoothArray1.size == 0,
-		{~medianSmoothArray1.addFirst(~medianArray1[0])},
-		{
-			~smoothMedian1 = (~medianSmoothArray1[0] * ~alpha) +  (~medianArray1[0] * (1 - ~alpha));
-			~medianSmoothArray1.addFirst(~smoothMedian1);
-		}
+		// only if smaller set percentile
+		,{~filteredArray1.addFirst( ~sentTimeDeltaLocal_1 ); // add to filtered array
+	      if( ~filteredArray1.size > ~timeWindow, {~filteredArray1.pop;  }); // pop the last when time window is reached
+			// [~sentTimeDeltaLocal_2 , ~sentTimeDeltaLocal_1, ~sentTimeDeltaLocal_2 - ~sentTimeDeltaLocal_1].postln;
+			~deltadeltaArray1.addFirst(~filteredArray2[0] - ~filteredArray1[0]);
+	      if( ~deltadeltaArray1.size > ~timeWindow, {~deltadeltaArray1.pop; });
+	    }
 	);
-
-//	[~smoothMedian1, ~medianArray1[0]].postln;
-	if( ~medianSmoothArray1.size > ~timeWindow, {~medianSmoothArray1.pop; /*~medianSmoothArray1[~medianSmoothArray1.size-1] = 0;*/});
-
 
 	{
 	~dataPlot1.value_(~timeStampArray1);
-	~meanPlot1.value_(~meanArray1);
-	~medianPlot1.value_(~medianArray1);
-	~medianSmoothPlot1.value_(~medianSmoothArray1);
+	~percentilePlot1.value_(~filteredArray1);
+	~deltaDeltaPlot1.value_(~deltadeltaArray1);
 	~win.refresh;
 	}.defer;
 
-}, '/delay1', n);
+}, '/tc1', nil);
 
 
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
+	~sentTimeDeltaLocal_2 = time - SystemClock.seconds;
+	~lastTime2 = time;
 
-//	time.postln;
-//	msg[1].postln;
-//	SystemClock.seconds.postln;
+	~timeStampArray2.addFirst(	~sentTimeDeltaLocal_2  );
+	if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop;  });
 
-	~smoothMedian2 = 0;
-	~alpha = 0.9;
-
-	~timeStampArray2.addFirst(time - SystemClock.seconds);
-	if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop; ~timeStampArray2[~timeStampArray2.size-1] = 0; });
-    ~meanArray2.addFirst(~timeStampArray2.mean);
-	if( ~meanArray2.size > ~timeWindow, {~meanArray2.pop;  ~meanArray2[~meanArray2.size-1] = 0;});
-	~medianArray2.addFirst(~timeStampArray2.median);
-	if( ~medianArray2.size > ~timeWindow, {~medianArray2.pop; /* ~medianArray2[~medianArray2.size-1] = 0; */});
-
-		if(~medianSmoothArray2.size == 0,
-		{~medianSmoothArray2.addFirst(~medianArray2[0])},
-		{
-			~smoothMedian2 = (~medianSmoothArray2[0] * ~alpha) +  (~medianArray2[0] * (1 - ~alpha));
-			~medianSmoothArray2.addFirst(~smoothMedian2);
-		}
+	if( ~sentTimeDeltaLocal_2.abs < ~timeStampArray2.abs.percentile(~percentile)
+		,{~filteredArray2.addFirst( ~sentTimeDeltaLocal_2 );
+	     if( ~filteredArray2.size > ~timeWindow, {~filteredArray2.pop; });
+	  }
 	);
-	if( ~medianSmoothArray2.size > ~timeWindow, {~medianSmoothArray2.pop; /*~medianSmoothArray2[~medianSmoothArray2.size-1] = 0;*/});
-
 
 	{
 	~dataPlot2.value_(~timeStampArray2);
-	~meanPlot2.value_(~meanArray2);
-	~medianPlot2.value_(~medianArray2);
-	~medianSmoothPlot2.value_(~medianSmoothArray2);
-
-		~ratioSlider.value_((~medianSmoothArray2[0] / ~medianSmoothArray1[0]).linlin(0.9, 1.10, 0.0, 1.0) );
+	~percentilePlot2.value_(~filteredArray2);
 	~win.refresh;
 	}.defer;
 
-}, '/delay2', n);
+}, '/tc2', nil);
+
 
 )
 
+/******************** LAUNCH AUDIO  ****************************/
 
 (
-m = NetAddr("127.0.0.1", 57120); // loopback
+s.waitForBoot({ // Boot the server, if you need to
+
+	SynthDef(\help_PlayBuf, {| out = 0, bufnum = 0, delaybuf, delay1 = 0.1, delay2 = 0.1, mute1 = 1, mute2 = 0, pan = 1, level =1|
+	var in, delayLine1, delayLine2, faded;
+	in = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop:1, doneAction:2);
+		delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
+	delayLine2 = BufDelayL.ar(delaybuf, in, delay2, mute2);
+		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.1));
+		Out.ar(out, HPF.ar(faded, 50 ))
+}).add;
+s.sync;
+
+~delayBuffer = Buffer.alloc(s,44100,1);
+
+~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav", action:
+		{~delaySynth = Synth.new(\help_PlayBuf, [\bufnum, ~buffer.bufnum, \delaybuf, ~delayBuffer.bufnum, \delay1, 0.2]);}
+	); // remember to free the buffer later.
+s.sync;
+
+
+}.fork;
+
+)
+
+)
+
+/******************** LAUNCH AUDIO  ****************************/
+
+~delaySynth.set(\mute1, 0)
+~delaySynth.set(\mute2, 0)
+
+~delaySynth.set(\mute1, 1)
+~delaySynth.set(\mute2, 1)
+
+~delaySynth.set(\mute1, 1, \mute2, 0, \pan, -1 )
+~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1)
+
+~delaySynth.set(\delay1, 0.00);
+~delaySynth.set(\delay2, 0.03);
+
+(
+~switcher = Task({
+    inf.do({
+		~delaySynth.set(\mute1, 1, \mute2, 0, \pan, -1 );
+		"now".postln;
+		2.0.wait;
+		~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1);
+		"now".postln;
+		2.0.wait;
+    });
+}).start;
+)
+
+s.scope
+
+(
+// Stuff for testing:
+
+~delaySynth.set(\delay, 0.5.rand);
+
+
+m = NetAddr( ~ip, 57120); // loopback
 
 ~t1 = Task({
     inf.do({
-       m.sendMsg("/delay1", SystemClock.seconds);
+       m.sendMsg("/tc1", SystemClock.seconds);
 		        (30.reciprocal).wait;
     });
 }).start;
 
 ~t2 = Task({
     inf.do({
-       m.sendMsg("/delay2", SystemClock.seconds);
-		        (30.reciprocal + 0.01).wait;
+       m.sendMsg("/tc2", SystemClock.seconds);
+		        (30.reciprocal + 0.001).wait;
     });
 }).start;
 )
 
+~t1.stop;
+~t2.stop;
 
 
 
+
+
+
+
+/*
 a = Date.getDate;
 a.rawSeconds.postln;
 
+~deltadeltaArray2.minItem
+~deltadeltaArray2.maxItem
+
+~filteredArray2.minItem
+
+*/
