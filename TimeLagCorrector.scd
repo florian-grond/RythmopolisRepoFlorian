@@ -4,6 +4,11 @@
 // ~ip = "10.0.1.12";
 // ~ip = nil;
 
+
+~inBus = 0;
+
+~outBus = 0;
+
 ~percentile = 0.9;
 
 ~plotwidth = 500;
@@ -167,15 +172,16 @@ s.waitForBoot({ // Boot the server, if you need to
 
 	SynthDef(\help_PlayBuf, {| out = 0, bufnum = 0, delaybuf, delay1 = 0.1, delay2 = 0.1, mute1 = 1, mute2 = 0, pan = 1, level =1|
 	var in, delayLine1, delayLine2, faded;
-	in = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop:1, doneAction:2);
-		delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
+	// in = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop:1, doneAction:2);
+		in = SoundIn.ar(~inBus);
+	delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
 	delayLine2 = BufDelayL.ar(delaybuf, in, delay2, mute2);
 		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.005));
-		Out.ar(out, HPF.ar(faded, 50 ))
+		Out.ar(~outBus, HPF.ar(faded, 50 ))
 }).add;
 s.sync;
 
-~delayBuffer = Buffer.alloc(s,44100,1);
+~delayBuffer = Buffer.alloc(s,44100 * 10,1);
 
 ~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav", action:
 		{~delaySynth = Synth.new(\help_PlayBuf, [\bufnum, ~buffer.bufnum, \delaybuf, ~delayBuffer.bufnum, \delay1, 0.2]);}
@@ -200,8 +206,13 @@ s.sync;
 ~delaySynth.set(\mute1, 1, \mute2, 0, \pan, -1 )
 ~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1)
 
+
+~delaySynth.set(\delay1, 2);
+~delaySynth.set(\delay2, 0.1);
+
+
 ~delaySynth.set(\delay1, 0.00);
-~delaySynth.set(\delay2, 0.0005);
+~delaySynth.set(\delay2, 0.05);
 
 (
 ~switcher = Task({
