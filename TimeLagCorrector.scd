@@ -170,7 +170,7 @@ s.waitForBoot({ // Boot the server, if you need to
 	in = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop:1, doneAction:2);
 		delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
 	delayLine2 = BufDelayL.ar(delaybuf, in, delay2, mute2);
-		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.01));
+		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.005));
 		Out.ar(out, HPF.ar(faded, 50 ))
 }).add;
 s.sync;
@@ -201,17 +201,17 @@ s.sync;
 ~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1)
 
 ~delaySynth.set(\delay1, 0.00);
-~delaySynth.set(\delay2, 0.001);
+~delaySynth.set(\delay2, 0.0005);
 
 (
 ~switcher = Task({
     inf.do({
 		~delaySynth.set(\mute1, 1, \mute2, 0, \pan, -1 );
 		"now".postln;
-		0.4.wait;
+		0.1.wait;
 		~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1);
 		"now".postln;
-		0.4.wait;
+		0.1.wait;
     });
 }).start;
 )
