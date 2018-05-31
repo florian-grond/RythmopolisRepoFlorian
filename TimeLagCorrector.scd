@@ -9,37 +9,22 @@
 ~outBus = 0;
 
 ~outputGain = 0.1; // carefull this generatyes FEEDBACK
-
 ~percentile = 0.9;
 
 ~plotwidth = 500;
 ~plotheight = 120;
 ~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2.1) + 40, 600)).front;
 
-~ezSlider = EZSlider( ~win,         // parent
-              Rect(50, 70 + (~plotheight* 4), 600, 20),    // bounds
+~ezSlider = EZSlider( ~win,  // parent
+              Rect(50, 70 + (~plotheight* 4), 600, 20),  // bounds
               "delay",  // label
-              ControlSpec(0, 10, \lin, 0.01, 5),     // controlSpec
+              ControlSpec(0, 10, \lin, 0.001, 5), // controlSpec
               { |ez| (ez.value.asString ++" is the value of " ++ ez).postln;
 		~changeDelay.(ez.value);
 	} // action
 ).setColors(Color.grey,Color.white);
 
-
-
 ~counter = 0;
-
-~delayMover = Task({
-    inf.do({
-		~counter = ~counter + 1; if(~counter >= 1000,{~counter = 0});
-		// ~counter.postln;
-		{~ezSlider.value_(~counter.linlin(0, 1000, 0, 2pi).sin.linlin(-1,1, 0,10));}.defer;
-		0.1.wait;
-    });
-}).start;
-
-~delayMover.stop;
-~delayMover.start;
 
 ~percentileSlider = Slider(~win, Rect(10, 10, 25, 400));
 ~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0); ~percentileNumber.value = sl.value.linlin(0.0, 1.0, 0.0, 1.0); });
@@ -110,6 +95,8 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	    }
 	);
 
+	f.write("/tc1," ++ time ++"\n");
+
 	{
 	~dataPlot1.value_(~timeStampArray1);
 	~percentilePlot1.value_(~filteredArray1);
@@ -134,6 +121,8 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	  }
 	);
 
+	f.write("/tc2," ++ time ++"\n");
+
 	{
 	~dataPlot2.value_(~timeStampArray2);
 	~percentilePlot2.value_(~filteredArray2);
@@ -142,14 +131,17 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 
 }, '/tc2', nil);
 
+/******************** Recording the OSC data  ****************************/
+
+~path = Document.current.dir;
 
 
+f = File(~path++"/oscCommands "++Date.getDate++".txt".standardizePath,"w");
 
-
+~win.onClose_({f.close;});
+CmdPeriod.add({f.close;});
 
 /******************** LAUNCH AUDIO  ****************************/
-
-
 
 s = Server.local; // Server.internal;
 Server.scsynth;
@@ -187,30 +179,26 @@ s.waitForBoot({ // Boot the server, if you need to
 		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.3));
 		Out.ar(~outBus, HPF.ar(faded, 50 ))
 }).add;
+
 s.sync;
 
 ~delayBuffer = Buffer.alloc(s,44100 * 20,1);
 
-~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav", action:
-		{~delaySynth = Synth.new(\help_PlayBuf, [\bufnum, ~buffer.bufnum, \delaybuf, ~delayBuffer.bufnum, \delay1, 0.2]);}
-	); // remember to free the buffer later.
+~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav"	); // remember to free the buffer later.
 s.sync;
 
-~delaySynth.set(\delay1, 0.00);
-~delaySynth.set(\delay2, 0.05);
+~delaySynth = Synth.new(\help_PlayBuf, [\bufnum, ~buffer.bufnum, \delaybuf, ~delayBuffer.bufnum, \delay1, 0.2]);
+
+s.sync;
 
 
-~delaySynth.set(\mute1, ~outputGain, \mute2, 0, \pan, -1 )
+// ~delaySynth.set(\delay1, 0.00);
+// ~delaySynth.set(\delay2, 0.05);
+~delaySynth.set(\mute1, ~outputGain, \mute2, 0, \pan, -1 );
 
-
-}.fork;
-
-);
 
 ~switcherState = 1;
-
 ~changeDelay = {|delay|
-
 	case{~switcherState == 1}
 	{
 		~switcherState.postln;
@@ -222,15 +210,25 @@ s.sync;
 		~switcherState.postln;
 		~delaySynth.set(\delay2, delay);
 		~delaySynth.set(\mute1, 0, \mute2, 1, \pan, 1 );
-
 	};
-
 	~switcherState = ~switcherState * -1;
+};
 
-}
+~delayMover = Task({
+    inf.do({
+		~counter = ~counter + 1; if(~counter >= 1000,{~counter = 0});
+		// ~counter.postln;
+		{~ezSlider.value_(~counter.linlin(0, 1000, 0, 2pi).sin.linlin(-1,1, 0,10));}.defer;
+		0.1.wait;
+    });
+}); // .start;
 
+// ~delayMover.stop;
+//~delayMover.start;
 
+	}.fork;
 
+);
 
 )
 

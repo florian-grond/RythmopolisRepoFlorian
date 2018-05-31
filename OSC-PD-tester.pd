@@ -1,4 +1,4 @@
-#N canvas 26 329 614 492 10;
+#N canvas 47 392 614 492 10;
 #X obj 69 200 udpsend;
 #X msg 138 210 disconnect;
 #X obj 71 147 packOSC;
@@ -15,10 +15,10 @@
 ;
 #X obj 287 68 random 100;
 #X obj 287 90 / 100;
-#X obj 287 48 metro 30;
 #X obj 287 29 tgl 15 0 empty empty empty 17 7 0 10 -262144 -1 -1 1
 1;
 #X msg 207 116 send /tc1 \$1;
+#X obj 287 48 metro 32;
 #X connect 0 0 3 0;
 #X connect 1 0 0 0;
 #X connect 2 0 0 0;
@@ -30,10 +30,10 @@
 #X connect 9 0 7 0;
 #X connect 10 0 5 0;
 #X connect 10 0 11 0;
-#X connect 10 0 15 0;
+#X connect 10 0 14 0;
 #X connect 11 0 9 0;
 #X connect 12 0 13 0;
-#X connect 13 0 16 0;
-#X connect 14 0 12 0;
-#X connect 15 0 14 0;
-#X connect 16 0 2 0;
+#X connect 13 0 15 0;
+#X connect 14 0 16 0;
+#X connect 15 0 2 0;
+#X connect 16 0 12 0;
