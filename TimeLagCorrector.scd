@@ -32,7 +32,7 @@
 
 ~percentileSlider.value_(~percentile);
 
-~text1 = TextField(~win, Rect(50, 10, 300, 20)).background_(Color.gray).string_("OSC timestamp1 - local time");
+~text1 = TextField(~win, Rect(50, 10, 300, 20)).background_(Color.gray).string_("OSC SMTP 1 - local time");
 ~dataView1 = CompositeView(~win, Rect(50, 30 + (~plotheight* 0), ~plotwidth, ~plotheight));
 ~dataPlot1 = Plotter("plot", parent: ~dataView1).value_({0}!1 * 100);
 ~dataPlot1.plotMode = \points;
@@ -42,7 +42,7 @@
 ~percentilePlot1 = Plotter("plot", parent: ~percentileView1).value_({0}!1 * 100);
 ~percentilePlot1.plotMode = \points;
 
-~text3 = TextField(~win, Rect(~plotwidth + 60, 10 + (~plotheight* 0), 300, 20)).background_(Color.gray).string_("OSC timestamp2 - local time");
+~text3 = TextField(~win, Rect(~plotwidth + 60, 10 + (~plotheight* 0), 300, 20)).background_(Color.gray).string_("OSC SMTP 2 - local time");
 ~dataView2 = CompositeView(~win, Rect(~plotwidth + 60, 30 + (~plotheight* 0), ~plotwidth, ~plotheight));
 ~dataPlot2 = Plotter("plot", parent: ~dataView2).value_({0}!1 * 100);
 ~dataPlot2.plotMode = \points;
@@ -79,7 +79,7 @@ n = NetAddr(~ip, 57120); // local machine
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
 	~sentTimeDeltaLocal_1 = time - SystemClock.seconds;
-	~lastTime1 = time;
+	~lastTime1 = msg[0];
 
 	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); // add incoming value
 	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  }); // pop the last when time window is reached
@@ -110,7 +110,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
 	~sentTimeDeltaLocal_2 = time - SystemClock.seconds;
-	~lastTime2 = time;
+	~lastTime2 = msg[0];
 
 	~timeStampArray2.addFirst(	~sentTimeDeltaLocal_2  );
 	if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop;  });
