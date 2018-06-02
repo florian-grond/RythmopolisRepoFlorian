@@ -42,7 +42,7 @@
 ~percentilePlot1 = Plotter("plot", parent: ~percentileView1).value_({0}!1 * 100);
 ~percentilePlot1.plotMode = \points;
 
-~text3 = TextField(~win, Rect(~plotwidth + 60, 10 + (~plotheight* 0), 300, 20)).background_(Color.gray).string_("OSC SMTP 2 - local time");
+~text3 = TextField(~win, Rect(~plotwidth + 60, 10 + (~plotheight* 0), 300, 20)).background_(Color.gray).string_("OSC SMTP 1 - local time");
 ~dataView2 = CompositeView(~win, Rect(~plotwidth + 60, 30 + (~plotheight* 0), ~plotwidth, ~plotheight));
 ~dataPlot2 = Plotter("plot", parent: ~dataView2).value_({0}!1 * 100);
 ~dataPlot2.plotMode = \points;
@@ -78,8 +78,12 @@ n = NetAddr(~ip, 57120); // local machine
 
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
-	~sentTimeDeltaLocal_1 = time - SystemClock.seconds;
-	~lastTime1 = msg[0];
+
+	~now = Date.getDate.localtime;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
+
+	~sentTimeDeltaLocal_1 = msg[1] - ~nowSeconds;
+	~lastTime1 = msg[1];
 
 	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); // add incoming value
 	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  }); // pop the last when time window is reached
@@ -95,7 +99,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	    }
 	);
 
-	f.write("/tc1," ++ time ++"\n");
+	f.write("/tc1," ++ ~lastTime1 ++"\n");
 
 	{
 	~dataPlot1.value_(~timeStampArray1);
@@ -109,8 +113,15 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 
 OSCFunc.newMatching({|msg, time, addr, recvPort|
 
-	~sentTimeDeltaLocal_2 = time - SystemClock.seconds;
-	~lastTime2 = msg[0];
+	~now = Date.getDate.localtime;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
+
+	~sentTimeDeltaLocal_2 = msg[1] - ~nowSeconds;
+
+	// ~sentTimeDeltaLocal_2.postln;
+	~lastTime2 = msg[1];
+
+	// msg.postln;
 
 	~timeStampArray2.addFirst(	~sentTimeDeltaLocal_2  );
 	if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop;  });
@@ -121,7 +132,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	  }
 	);
 
-	f.write("/tc2," ++ time ++"\n");
+	f.write("/tc2," ++ ~lastTime2 ++"\n");
 
 	{
 	~dataPlot2.value_(~timeStampArray2);
@@ -302,11 +313,26 @@ m = NetAddr( ~ip, 57120); // loopback
 
 
 
+~year = Date.getDate.year
+~month = Date.getDate.month
+~day = Date.getDate.day
 
+~today = Date(~year, ~month, ~day, 0,0,0,0,0);
+
+~today.r
+
+
+~now = Date.getDate.localtime;
+~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
 
 /*
-a = Date.getDate;
-a.rawSeconds.postln;
+a = Date.getDate; a.rawSeconds.postln;
+
+(a.hour * 3600) + (a.minute * 60) + (a.second)
+
+a.second
+
+postln;
 
 ~deltadeltaArray2.minItem
 ~deltadeltaArray2.maxItem
@@ -314,3 +340,10 @@ a.rawSeconds.postln;
 ~filteredArray2.minItem
 
 */
+
+
+SystemClock.seconds / 60
+
+
+
+Date.hourStamp
