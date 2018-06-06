@@ -79,7 +79,10 @@ n = NetAddr.localAddr;
 OSCdef.newMatching(\tc1, {|msg, time, addr, recvPort|
 	~now = Date.getDate.localtime;
     ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
-	~sentTimeDeltaLocal_1 = msg[1] - ~nowSeconds;
+     if( msg[2] == nil,
+		{~sentTimeDeltaLocal_1 = msg[1] - ~nowSeconds;},
+		{~sentTimeDeltaLocal_1 = msg[1] - msg[2];}
+	);
 	~lastTime1 = msg[1];
 	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); // add incoming value
 	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  }); // pop the last when time window is reached
@@ -109,7 +112,12 @@ OSCdef.newMatching(\tc1, {|msg, time, addr, recvPort|
 OSCdef.newMatching(\tc2, {|msg, time, addr, recvPort|
 	~now = Date.getDate.localtime;
     ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
-	~sentTimeDeltaLocal_2 = msg[1] - ~nowSeconds;
+
+     if( msg[2] == nil,
+		{~sentTimeDeltaLocal_2 = msg[1] - ~nowSeconds;},
+		{~sentTimeDeltaLocal_2 = msg[1] - msg[2];}
+	);
+
 	// ~sentTimeDeltaLocal_2.postln;
 	~lastTime2 = msg[1];
 	// msg.postln;
@@ -348,26 +356,17 @@ m = NetAddr( ~ip, 57120); // loopback
 ~firstTimeStamp = ~oscData[0][2];
 ~t1 = Task({
     inf.do({
-		if(~entryCounter >= (~oscData.size-1),{~entryCounter = 0});
+		if(~entryCounter >= (~oscData.size-2),{~entryCounter = 0});
 		case
 		{~oscData[~entryCounter][0] == "/tc1"}
-		{       m.sendMsg("/tc1", ~oscData[~entryCounter][2] -  ~firstTimeStamp); }
+		{       m.sendMsg("/tc1", ~oscData[~entryCounter][1], ~oscData[~entryCounter][2] ); }
 		{~oscData[~entryCounter][0] == "/tc2"}
-		{       m.sendMsg("/tc2", ~oscData[~entryCounter][2] -  ~firstTimeStamp); }
+		{       m.sendMsg("/tc2", ~oscData[~entryCounter][1], ~oscData[~entryCounter][2] ); }
 		{"somethingelse"};
 		~entryCounter = ~entryCounter + 1;
-	    (~oscData[~entryCounter][2] -  ~firstTimeStamp).wait;
+	    (~oscData[~entryCounter+1][1] -  ~oscData[~entryCounter][1]).wait;
     });
 }).start;
 
-~t2 = Task({
-    inf.do({
-	~now = Date.getDate.localtime;
-    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
-
-       m.sendMsg("/tc2", ~nowSeconds);
-		        (30.reciprocal + 0.001).wait;
-    });
-}).start;
 )
 
