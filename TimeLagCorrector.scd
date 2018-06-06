@@ -1,8 +1,11 @@
 (
 // ~ip = "169.254.130.74";
-// ~ip = "127.0.0.1";
+ ~ip = "127.0.0.1";
 // ~ip = "10.0.1.12";
 // ~ip = nil;
+//  n = NetAddr(~ip, 57121); // local machine
+
+n = NetAddr.localAddr;
 
 
 ~inBus = 0;
@@ -21,14 +24,12 @@
               ControlSpec(0, 10, \lin, 0.001, 5), // controlSpec
               { |ez| (ez.value.asString ++" is the value of " ++ ez).postln;
 		~changeDelay.(ez.value);
-	} // action
-).setColors(Color.grey,Color.white);
+	} ).setColors(Color.grey,Color.white);
 
-~counter = 0;
 
 ~percentileSlider = Slider(~win, Rect(10, 10, 25, 400));
 ~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0); ~percentileNumber.value = sl.value.linlin(0.0, 1.0, 0.0, 1.0); });
-~percentileNumber =     NumberBox(~win, Rect(10, 410, 35, 25)).value_(~percentile);
+~percentileNumber = NumberBox(~win, Rect(10, 410, 35, 25)).value_(~percentile);
 
 ~percentileSlider.value_(~percentile);
 
@@ -70,26 +71,20 @@
 
 ~percentile = 0.9;
 
-n = NetAddr(~ip, 57120); // local machine
 
 ~timeWindow = 380;
 ~alpha = 0.98;
 
 
-OSCFunc.newMatching({|msg, time, addr, recvPort|
-
-
+OSCdef.newMatching(\tc1, {|msg, time, addr, recvPort|
 	~now = Date.getDate.localtime;
     ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
-
 	~sentTimeDeltaLocal_1 = msg[1] - ~nowSeconds;
 	~lastTime1 = msg[1];
-
 	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); // add incoming value
 	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  }); // pop the last when time window is reached
 
 	if( ~sentTimeDeltaLocal_1.abs < ~timeStampArray1.abs.percentile(~percentile)
-
 		// only if smaller set percentile
 		,{~filteredArray1.addFirst( ~sentTimeDeltaLocal_1 ); // add to filtered array
 	      if( ~filteredArray1.size > ~timeWindow, {~filteredArray1.pop;  }); // pop the last when time window is reached
@@ -99,7 +94,7 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	    }
 	);
 
-	f.write("/tc1," ++ ~lastTime1 ++"\n");
+	f.write("/tc1," ++ ~lastTime1 ++","++ ~nowSeconds  ++ "\n");
 
 	{
 	~dataPlot1.value_(~timeStampArray1);
@@ -108,49 +103,39 @@ OSCFunc.newMatching({|msg, time, addr, recvPort|
 	~win.refresh;
 	}.defer;
 
-}, '/tc1', nil);
+}, '/tc1', recvPort: 57120);
 
 
-OSCFunc.newMatching({|msg, time, addr, recvPort|
-
+OSCdef.newMatching(\tc2, {|msg, time, addr, recvPort|
 	~now = Date.getDate.localtime;
     ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
-
 	~sentTimeDeltaLocal_2 = msg[1] - ~nowSeconds;
-
 	// ~sentTimeDeltaLocal_2.postln;
 	~lastTime2 = msg[1];
-
 	// msg.postln;
-
 	~timeStampArray2.addFirst(	~sentTimeDeltaLocal_2  );
 	if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop;  });
 
 	if( ~sentTimeDeltaLocal_2.abs < ~timeStampArray2.abs.percentile(~percentile)
 		,{~filteredArray2.addFirst( ~sentTimeDeltaLocal_2 );
 	     if( ~filteredArray2.size > ~timeWindow, {~filteredArray2.pop; });
-	  }
-	);
-
-	f.write("/tc2," ++ ~lastTime2 ++"\n");
-
+	  } );
+	f.write("/tc2," ++ ~lastTime2 ++","++ ~nowSeconds  ++ "\n");
 	{
 	~dataPlot2.value_(~timeStampArray2);
 	~percentilePlot2.value_(~filteredArray2);
 	~win.refresh;
 	}.defer;
 
-}, '/tc2', nil);
+}, '/tc2', recvPort: 57120);
 
 /******************** Recording the OSC data  ****************************/
 
 ~path = Document.current.dir;
+f = File(~path++"/oscCommands "++Date.getDate.asString.replace(":", "_")++".txt","w");
 
-
-f = File(~path++"/oscCommands "++Date.getDate++".txt".standardizePath,"w");
-
-~win.onClose_({f.close;});
-CmdPeriod.add({f.close;});
+~win.onClose_({OSCdef.freeAll; f.close;});
+CmdPeriod.add({~win.close; f.close; OSCdef.freeAll });
 
 /******************** LAUNCH AUDIO  ****************************/
 
@@ -179,7 +164,9 @@ o.threads_(16); // the number of threads supernova is using
 s.makeWindow; // make a Window
 s.scope(9, 0, 4096, 2); // make a scope with 9 channels starting at channel 0, window
 
-s.waitForBoot({ // Boot the server, if you need to
+s.reboot;
+
+s.dowhenBooted({ // Boot the server, if you need to
 
 	SynthDef(\help_PlayBuf, {| out = 0, bufnum = 0, delaybuf, delay1 = 0.1, delay2 = 0.1, mute1 = 1, mute2 = 0, pan = 1, level =1|
 	var in, delayLine1, delayLine2, faded;
@@ -202,7 +189,6 @@ s.sync;
 
 s.sync;
 
-
 // ~delaySynth.set(\delay1, 0.00);
 // ~delaySynth.set(\delay2, 0.05);
 ~delaySynth.set(\mute1, ~outputGain, \mute2, 0, \pan, -1 );
@@ -224,6 +210,9 @@ s.sync;
 	};
 	~switcherState = ~switcherState * -1;
 };
+
+
+~counter = 0;
 
 ~delayMover = Task({
     inf.do({
@@ -286,21 +275,27 @@ s.scope
 (
 // Stuff for testing:
 
-~delaySynth.set(\delay, 0.5.rand);
+// ~delaySynth.set(\delay, 0.5.rand);
 
 
 m = NetAddr( ~ip, 57120); // loopback
 
 ~t1 = Task({
     inf.do({
-       m.sendMsg("/tc1", SystemClock.seconds);
+
+	~now = Date.getDate.localtime;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
+       m.sendMsg("/tc1", ~nowSeconds);
 		        (30.reciprocal).wait;
     });
 }).start;
 
 ~t2 = Task({
     inf.do({
-       m.sendMsg("/tc2", SystemClock.seconds);
+	~now = Date.getDate.localtime;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
+
+       m.sendMsg("/tc2", ~nowSeconds);
 		        (30.reciprocal + 0.001).wait;
     });
 }).start;
@@ -342,8 +337,37 @@ postln;
 */
 
 
-SystemClock.seconds / 60
 
+~oscData = CSVFileReader.read(~path++"/oscCommands Wed Jun  6 09_49_17 2018.txt").postcs;
+~oscData.do({|item,i| ~oscData[i][1] = ~oscData[i][1].interpret; ~oscData[i][2] = ~oscData[i][2].interpret; });
+(
 
+m = NetAddr( ~ip, 57120); // loopback
 
-Date.hourStamp
+~entryCounter = 0;
+~firstTimeStamp = ~oscData[0][2];
+~t1 = Task({
+    inf.do({
+		if(~entryCounter >= (~oscData.size-1),{~entryCounter = 0});
+		case
+		{~oscData[~entryCounter][0] == "/tc1"}
+		{       m.sendMsg("/tc1", ~oscData[~entryCounter][2] -  ~firstTimeStamp); }
+		{~oscData[~entryCounter][0] == "/tc2"}
+		{       m.sendMsg("/tc2", ~oscData[~entryCounter][2] -  ~firstTimeStamp); }
+		{"somethingelse"};
+		~entryCounter = ~entryCounter + 1;
+	    (~oscData[~entryCounter][2] -  ~firstTimeStamp).wait;
+    });
+}).start;
+
+~t2 = Task({
+    inf.do({
+	~now = Date.getDate.localtime;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
+
+       m.sendMsg("/tc2", ~nowSeconds);
+		        (30.reciprocal + 0.001).wait;
+    });
+}).start;
+)
+
