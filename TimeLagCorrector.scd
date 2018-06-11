@@ -5,9 +5,11 @@
 // ~ip = nil;
 //  n = NetAddr(~ip, 57121); // local machine
 
+
+
 n = NetAddr.localAddr;
 
-
+~maxDelay = 0.01;
 ~inBus = 0;
 ~outBus = 0;
 
@@ -18,14 +20,25 @@ n = NetAddr.localAddr;
 ~plotheight = 120;
 ~win = Window("plot panel", Rect(30, 30, (~plotwidth * 2.1) + 40, 600)).front;
 
+/******************** Recording the OSC data  ****************************/
+
+~path = Document.current.dir;
+f = File(~path++"/oscCommands "++Date.getDate.asString.replace(":", "_")++".txt","w");
+
+~win.onClose_({OSCdef.freeAll; f.close;});
+CmdPeriod.add({~win.close; f.close; OSCdef.freeAll });
+
+
+/******************** making the GUI  ****************************/
+
+
 ~ezSlider = EZSlider( ~win,  // parent
               Rect(50, 70 + (~plotheight* 4), 600, 20),  // bounds
               "delay",  // label
-              ControlSpec(0, 10, \lin, 0.001, 5), // controlSpec
+              ControlSpec(0, ~maxDelay, \lin, 0.000001, 5), // controlSpec
               { |ez| (ez.value.asString ++" is the value of " ++ ez).postln;
 		~changeDelay.(ez.value);
 	} ).setColors(Color.grey,Color.white);
-
 
 ~percentileSlider = Slider(~win, Rect(10, 10, 25, 400));
 ~percentileSlider.action_({|sl| ~percentile = sl.value.linlin(0.0, 1.0, 0.0, 1.0); ~percentileNumber.value = sl.value.linlin(0.0, 1.0, 0.0, 1.0); });
@@ -73,29 +86,30 @@ n = NetAddr.localAddr;
 
 
 ~timeWindow = 380;
-~alpha = 0.98;
+~alpha = 0.97;
 
+~filteredDelay = 0;
 
 OSCdef.newMatching(\tc1, {|msg, time, addr, recvPort|
 	~now = Date.getDate.localtime;
-    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
-     if( msg[2] == nil,
-		{~sentTimeDeltaLocal_1 = msg[1] - ~nowSeconds;},
-		{~sentTimeDeltaLocal_1 = msg[1] - msg[2];}
-	);
-	~lastTime1 = msg[1];
-	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); // add incoming value
-	if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  }); // pop the last when time window is reached
+	~millisecs = SystemClock.seconds - SystemClock.seconds.floor;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + ~millisecs;
+     if( msg[2] == nil, {~sentTimeDeltaLocal_1 = msg[1] - ~nowSeconds;},
+		                {~sentTimeDeltaLocal_1 = msg[1] - msg[2];}
+	    );
 
-	if( ~sentTimeDeltaLocal_1.abs < ~timeStampArray1.abs.percentile(~percentile)
-		// only if smaller set percentile
-		,{~filteredArray1.addFirst( ~sentTimeDeltaLocal_1 ); // add to filtered array
-	      if( ~filteredArray1.size > ~timeWindow, {~filteredArray1.pop;  }); // pop the last when time window is reached
-			// [~sentTimeDeltaLocal_2 , ~sentTimeDeltaLocal_1, ~sentTimeDeltaLocal_2 - ~sentTimeDeltaLocal_1].postln;
+	~lastTime1 = msg[1];
+	~timeStampArray1.addFirst(	~sentTimeDeltaLocal_1  ); if( ~timeStampArray1.size > ~timeWindow, {~timeStampArray1.pop;  });
+
+	if( ~sentTimeDeltaLocal_1.abs < ~timeStampArray1.abs.percentile(~percentile) // only if smaller set percentile
+		,{~filteredArray1.addFirst( ~sentTimeDeltaLocal_1 ); if( ~filteredArray1.size > ~timeWindow, {~filteredArray1.pop;  });
+			// pop the last when time window is reached
 			~deltadeltaArray1.addFirst(~filteredArray2[0] - ~filteredArray1[0]);
 	      if( ~deltadeltaArray1.size > ~timeWindow, {~deltadeltaArray1.pop; });
 	    }
 	);
+
+	~filteredDelay = (~filteredDelay * (~alpha))+ (~deltadeltaArray1[0] * (1-~alpha));
 
 	f.write("/tc1," ++ ~lastTime1 ++","++ ~nowSeconds  ++ "\n");
 
@@ -103,6 +117,7 @@ OSCdef.newMatching(\tc1, {|msg, time, addr, recvPort|
 	~dataPlot1.value_(~timeStampArray1);
 	~percentilePlot1.value_(~filteredArray1);
 	~deltaDeltaPlot1.value_(~deltadeltaArray1);
+		~ezSlider.value_(~filteredDelay);
 	~win.refresh;
 	}.defer;
 
@@ -111,18 +126,15 @@ OSCdef.newMatching(\tc1, {|msg, time, addr, recvPort|
 
 OSCdef.newMatching(\tc2, {|msg, time, addr, recvPort|
 	~now = Date.getDate.localtime;
-    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + SystemClock.seconds - SystemClock.seconds.floor;
+	~millisecs = SystemClock.seconds - SystemClock.seconds.floor;
+    ~nowSeconds = (~now.hour * 3600) + (~now.minute * 60) + (~now.second) + ~millisecs;
 
-     if( msg[2] == nil,
-		{~sentTimeDeltaLocal_2 = msg[1] - ~nowSeconds;},
-		{~sentTimeDeltaLocal_2 = msg[1] - msg[2];}
-	);
+     if( msg[2] == nil, {~sentTimeDeltaLocal_2 = msg[1] - ~nowSeconds;},
+		                {~sentTimeDeltaLocal_2 = msg[1] - msg[2];}
+	    );
 
-	// ~sentTimeDeltaLocal_2.postln;
 	~lastTime2 = msg[1];
-	// msg.postln;
-	~timeStampArray2.addFirst(	~sentTimeDeltaLocal_2  );
-	if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop;  });
+	~timeStampArray2.addFirst(	~sentTimeDeltaLocal_2  ); if( ~timeStampArray2.size > ~timeWindow, {~timeStampArray2.pop;  });
 
 	if( ~sentTimeDeltaLocal_2.abs < ~timeStampArray2.abs.percentile(~percentile)
 		,{~filteredArray2.addFirst( ~sentTimeDeltaLocal_2 );
@@ -137,13 +149,7 @@ OSCdef.newMatching(\tc2, {|msg, time, addr, recvPort|
 
 }, '/tc2', recvPort: 57120);
 
-/******************** Recording the OSC data  ****************************/
 
-~path = Document.current.dir;
-f = File(~path++"/oscCommands "++Date.getDate.asString.replace(":", "_")++".txt","w");
-
-~win.onClose_({OSCdef.freeAll; f.close;});
-CmdPeriod.add({~win.close; f.close; OSCdef.freeAll });
 
 /******************** LAUNCH AUDIO  ****************************/
 
@@ -170,37 +176,34 @@ o.memSize = 2.pow(18); // the memory of the server
 o.sampleRate = 48000;
 o.threads_(16); // the number of threads supernova is using
 s.makeWindow; // make a Window
-s.scope(9, 0, 4096, 2); // make a scope with 9 channels starting at channel 0, window
 
+s.quit;
 s.reboot;
 
-s.dowhenBooted({ // Boot the server, if you need to
+s.waitForBoot({ // Boot the server, if you need to
 
 	SynthDef(\help_PlayBuf, {| out = 0, bufnum = 0, delaybuf, delay1 = 0.1, delay2 = 0.1, mute1 = 1, mute2 = 0, pan = 1, level =1|
 	var in, delayLine1, delayLine2, faded;
 	// in = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop:1, doneAction:2);
-		in = SoundIn.ar(~inBus);
-	delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1) ;
+	in = SoundIn.ar(~inBus);
+	delayLine1 = BufDelayL.ar(delaybuf, in, delay1, mute1);
 	delayLine2 = BufDelayL.ar(delaybuf, in, delay2, mute2);
-		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.3));
+		faded =	XFade2.ar(delayLine1, delayLine2, pan.lag(0.1));
 		Out.ar(~outBus, HPF.ar(faded, 50 ))
 }).add;
 
 s.sync;
 
 ~delayBuffer = Buffer.alloc(s,44100 * 20,1);
-
 ~buffer = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav"	); // remember to free the buffer later.
 s.sync;
 
 ~delaySynth = Synth.new(\help_PlayBuf, [\bufnum, ~buffer.bufnum, \delaybuf, ~delayBuffer.bufnum, \delay1, 0.2]);
-
 s.sync;
 
 // ~delaySynth.set(\delay1, 0.00);
 // ~delaySynth.set(\delay2, 0.05);
 ~delaySynth.set(\mute1, ~outputGain, \mute2, 0, \pan, -1 );
-
 
 ~switcherState = 1;
 ~changeDelay = {|delay|
@@ -234,9 +237,16 @@ s.sync;
 // ~delayMover.stop;
 //~delayMover.start;
 
+
+
 	}.fork;
 
 );
+
+
+s.scope(9, 0, 4096, 2); // make a scope with 9 channels starting at channel 0, window
+
+
 
 )
 
