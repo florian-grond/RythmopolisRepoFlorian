@@ -42,6 +42,15 @@ SynthDef(\panner,
 }).add;
 
 
+SynthDef(\pannerAzDist,
+	{|az = 0.78539816339745, dist =1, gain = 0, out= 2, freq = 880, delay = 0.5|
+     var pannedSig, in;
+			in = DelayN.ar( BPF.ar( Decay.ar(Impulse.ar(2), 0.05, PinkNoise.ar(1)), freq, 0.002, 10), 3.0, delay);
+			pannedSig = HOAEncoder.ar(1, in , az.varlag(5), 0, 1, dist.varlag(5));
+			Out.ar(out, pannedSig * gain)
+}).add;
+
+
 SynthDef(\pannerA,
 	{|az = 0.78539816339745, gain = 0, out= 2, freq = 880, delay = 0.5|
      var pannedSig, in;
@@ -78,6 +87,8 @@ s.makeWindow; // make a Window
 s.scope(9, 0, 4096, 2); // make a scope with 9 channels starting at channel 0, window
 
 
+	s.plotTree;
+
 })
 
 )
@@ -92,7 +103,15 @@ s.scope(9, 0, 4096, 2); // make a scope with 9 channels starting at channel 0, w
 Routine.run
 {
 
-~decoder = {HOADecBinaural.ar(1, In.ar(2,4), 0, 0)}.play;
+~decoderGroup = ParGroup.new();
+
+		s.sync;
+
+	~decoder = {|azi| HOADecBinaural.ar(1,
+		                  HOATransRotateAz.ar(1,      In.ar(2,4), azi),
+			                      0, 0)
+	            }.play(~decoderGroup);
+
 	s.sync;
 
 ~parPanners = ParGroup.new();
@@ -132,6 +151,19 @@ OSCdef.newMatching(("gain"++i).asSymbol, {|msg, time, addr, recvPort|
 OSCdef.newMatching('recorder', {|msg, time, addr, recvPort|
 		"RECORDER".postln;}, ("/source/*").asSymbol, n);
 
+
+	~sources = {|i| Synth(\pannerAzDist,
+		 [\az, 2pi.rand,
+	      \elev, (pi * 0.5).rand,
+		  \dist, 0.1+ 30.rand,
+		  \gain, 0.1,
+		  \freq, i.linexp(0,~numVoices, 200, 2000),
+		 // \delay, i.linlin(0,~numVoices, 0.0, 0.5)
+		  \delay, 0.5.rand
+		]
+		,
+		~parPanners, \addToHead )}!~numVoices;
+
 	/*
 	~sources = {|i| Synth(\panner,
 		 [\az, 2pi.rand,
@@ -144,7 +176,7 @@ OSCdef.newMatching('recorder', {|msg, time, addr, recvPort|
 		]
 		,
 		~parPanners, \addToHead )}!~numVoices;
-	*/
+
 
 
 	~sources = {|i| Synth(\pannerA,
@@ -156,7 +188,7 @@ OSCdef.newMatching('recorder', {|msg, time, addr, recvPort|
 		]
 		,
 		~parPanners, \addToHead )}!~numVoices;
-
+*/
 
 	s.sync;
 }
@@ -191,10 +223,11 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/az", 2pi.rand) } );
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/elev", (pi*0.5).rand2) } );
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/dist", 60.rand + 0.1) } );
-~numVoices.do( {|i| m.sendMsg("/source/"++i++"/gain", 1.0.rand) } );
+~numVoices.do( {|i| m.sendMsg("/source/"++i++"/gain", 1.0.rand.linexp(0,1.0, 0.01, 1.0)) } );
 
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/dist", 100.rand + 0.1) } );
 
+~decoder.set(\azi, pi * -0.5)
 
 m.sendMsg("/source/*/az", 0);
 m.sendMsg("/source/*/az", pi * 0.5);
