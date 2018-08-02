@@ -2,8 +2,8 @@
 
 ~oscVerbose = false;
 ~oscVerbose = true;
-OSCdef.trace_(true);
-OSCdef.trace_(false);
+OSCdef.trace(true);
+OSCdef.trace(false);
 
 m = NetAddr("127.0.0.1", 57120); // loopback
 (
@@ -29,29 +29,53 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 
 
 (
- m.sendMsg("/source/1/pos",
-	                     1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
-	                     1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
-	                     10.0.rand; )
+ m.sendMsg("/source/1/pos",1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                       1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+	                       10.0.rand; )
 )
 
 (
-m.sendMsg("/source/2/pos",
-	                     1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
-	                     1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
-	                     10.0.rand; )
+m.sendMsg("/source/2/pos",1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                      1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+	                      10.0.rand; )
 )
 
 
 
 
 
-m.sendMsg("/listener", 1.0.rand2, 1.0.rand2, pi.rand2);
+(
+m.sendMsg("/source/2/pos", 1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                       1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+	                       10.0.rand; )
+)
 
 
 
 
+(
+m.sendMsg("/listener",  1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                    1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+	                    10.0.rand,
+	                    pi.rand2;
 
+
+)
+
+)
+
+
+
+(
+m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                    0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+	                    1.0,
+	                    pi.rand2;
+
+
+)
+
+)
 
 
 
@@ -68,20 +92,32 @@ m.sendMsg("/listener", 1.0.rand2, 1.0.rand2, pi.rand2);
 
 
 
-
-
-
-
-
-
-~task = Task({
+~testTask = Task({
 	~counter = 1;
     inf.do({
 		~counter = ~counter + 0.005;
 		if (~counter > 2pi,{~counter = 0});
-		m.sendMsg("/listener", (~counter.cos *0.5).linlin(-1.0, 1.0, 45.506792,45.508117), (~counter.sin).linlin(-1.0, 1.0, -73.566205,-73.568541), (~counter * 4).sin);
-
-		if((w != nil) && ~visualize, {w.refresh} );
-        0.02.wait;
+		m.sendMsg("/listener",  ~counter.cos.linlin(-2.0, 2.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                            ~counter.sin.linlin(-2.0, 2.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+			                    0,
+			                    ~counter.cos.linlin(-1,1.0, -pi, pi)
+			                      );
+		       0.1.wait;
     });
-},AppClock).stop;
+}, AppClock ).stop;
+
+
+~testTask.start
+
+~testTask.stop
+
+~sources.do( {|item, i| item.set(\az, -0.5pi,	 \elev, 0 ) })
+~sources.do( {|item, i| item.set(\az, 0.5pi,	 \elev, 0 ) })
+~sources.do( {|item, i| item.set(\az, 0,	 \elev, 0 ) })
+~sources.do( {|item, i| item.set(\az, pi,	 \elev, 0 ) })
+~sources.do( {|item, i| item.set(\az,  pi.rand2,	 \elev, 0.5pi.rand2 ) })
+
+
+
+
+
