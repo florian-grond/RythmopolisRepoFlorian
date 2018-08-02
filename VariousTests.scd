@@ -62,3 +62,26 @@ m.sendMsg("/listener", 1.0.rand2, 1.0.rand2, pi.rand2);
 		                         0.rand)
 
 ~toMeters.(~absSourcePositionsLongLat[0])
+
+
+
+
+
+
+
+
+
+
+
+
+~task = Task({
+	~counter = 1;
+    inf.do({
+		~counter = ~counter + 0.005;
+		if (~counter > 2pi,{~counter = 0});
+		m.sendMsg("/listener", (~counter.cos *0.5).linlin(-1.0, 1.0, 45.506792,45.508117), (~counter.sin).linlin(-1.0, 1.0, -73.566205,-73.568541), (~counter * 4).sin);
+
+		if((w != nil) && ~visualize, {w.refresh} );
+        0.02.wait;
+    });
+},AppClock).stop;

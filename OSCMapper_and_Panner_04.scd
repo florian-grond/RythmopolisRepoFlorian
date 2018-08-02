@@ -1,6 +1,6 @@
 
 ~bootTheServer.();
-~numVoices = 64;
+~numVoices = 128;
 ~configDSP.();
 
 ~lowerLimitPlayground = (45.506792)@(-73.568541);
@@ -11,17 +11,16 @@
 ~loadOSCResponders.();
 ~oscVerbose = false;
 ~oscVerbose = true;
-OSCdef.trace_(true);
-OSCdef.trace_(false);
+OSCdef.trace(true);
+OSCdef.trace(false);
+
+~monitorWindow.()
 
 
 (
-~bootTheServer =
-{
 
+~bootTheServer = {
 Server.killAll;
-
-// execute this section to configure and boot the sound server
 s = Server.internal; // Server.internal;
 Server.supernova;
 // Server.scsynth;
@@ -31,10 +30,8 @@ o = Server.internal.options; // Get the local server's options
 // check what is listed as output from ServerOptions.devices and set the device correctly
 o.device = nil;
 // o.device = "112D";
-
 o.numInputBusChannels = 64; // Set nuber of input channels
 o.numOutputBusChannels = 64; // Set nuber of output channels
-
 o.numAudioBusChannels = 2048 * 8; // these are the internal max number of audiobusses
 o.blockSize = 512 * 1; // the blocksize
 o.numWireBufs = 1024 * 8; // number of wired buffers
@@ -42,15 +39,14 @@ o.memSize = 2.pow(18); // the memory of the server
 o.sampleRate = 48000;
 o.threads_(16); // the number of threads supernova is using
 s.reboot; // reboot (kill existing server, if running)
-
 };
 
 ~configDSP =
 {
 s.doWhenBooted ({
 		s.makeWindow; // make a Window
-		s.scope(64, 64, 4096, 2); // make a scope with 9 channels starting at channel 0, window
-		s.plotTree;
+		s.scope(64, 64, 4096, 2); // make a scope window with 64 channels starting at channel 64,
+		s.plotTree; // plot the DSP Tree
 
 Routine.run
 {		s.sync;
@@ -84,7 +80,7 @@ Routine.run
 		           sig = In.ar(6,4);
 		           rotated = HOATransRotateAz.ar(1, sig, azi);
 		           decoded = HOADecBinaural.ar(1, rotated, 0, 0);
-		          [sig + decoded].flatten * 0.1
+		           [sig,decoded].flatten * 0.1
 	            }.play(~decoderGroup);
 	    s.sync;
 
@@ -101,21 +97,17 @@ Routine.run
 		  \freq, i.linexp(0,~numVoices, 200, 2000),
 		 //  \delay, i.linlin(0,~numVoices, 0.0, 0.5)
 		 //  \delay, 0.5.rand
-		]
-		,
-		~parPanners, \addToHead )}!~numVoices;
-
+		] ,	~parPanners, \addToHead )}!~numVoices;
 
 	s.sync;
-}
-}
-)
+} // close Routine run
+	} ) // close doWhenBooted
 };
 
 
 ~toMeters = {|pointLonLatElev|
-	Cartesian((pointLonLatElev.x - ~latMid) * ~mPerDegLon,
-		      (pointLonLatElev.y - ~longMid) * ~mPerDegLat,
+	Cartesian((pointLonLatElev.y - ~longMid) * ~mPerDegLon,
+		      (pointLonLatElev.x - ~latMid) * ~mPerDegLat,
 		       pointLonLatElev.z - ~elevMid);
              };
 
@@ -123,14 +115,12 @@ Routine.run
 		                             (item - ~listenerPositionMeters).rotate(~listenerOrientation.neg)
 	                                   });};
 
-
 ~absToRelSource = {|cartAbsSourcePos| (cartAbsSourcePos - ~listenerPositionMeters).rotate(~listenerOrientation.neg) };
 
 ~positioningSetup=
 {
 // the values are calculated from this website:
 // http://www.csgnetwork.com/degreelenllavcalc.html
-
 ~middlePlayground = ~lowerLimitPlayground + ((~upperLimitPlayground - ~lowerLimitPlayground) * 0.5);
 
 ~latMid = ~middlePlayground.x;
@@ -211,156 +201,74 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
 		if(~oscVerbose,{msg.postln});
 	    },("/listener").asSymbol, nil);
 };
-)
 
-
-
-
-
-
-)
-
-
-
-
-
-if((w != nil) && ~visualize, {w.refresh} );
-
-
-(
-~visualize = false;
-~visualize = true;
-~absSourcePositions = {Cartesian(1.0.rand.linlin(0.0, 1.0, 45.506792,45.508117),1.0.rand.linlin(0.0, 1.0, -73.566205,-73.568541),10.rand)}!~numVoices;
-
-
-
-)
-
-
-
-~task.start
-
-~task.stop
-
-
-~task = Task({
-	~counter = 1;
-    inf.do({
-		~counter = ~counter + 0.005;
-		if (~counter > 2pi,{~counter = 0});
-		m.sendMsg("/listener", (~counter.cos *0.5).linlin(-1.0, 1.0, 45.506792,45.508117), (~counter.sin).linlin(-1.0, 1.0, -73.566205,-73.568541), (~counter * 4).sin);
-
-		if((w != nil) && ~visualize, {w.refresh} );
-        0.02.wait;
-    });
-},AppClock).stop;
-
-
-w = Window.new("HOA Scene Test", Rect(200,200,900,450));
-~visualize = true;
-// ~numVoices = 10;
-
-
-if((w != nil) && ~visualize, {w.refresh} );
-
-
-
-(
-w.front;
-
-~drawArrow ={|rotation = 0, x = 200, y = 200, scale = 0.15|
-    Pen.fillColor = Color.red;
+~drawArrow ={|rotation = 0, x = 200, y = 200, dotSize = 8|
+	Pen.color = Color.red;
 	Pen.translate(x,y); // 0@0 is now 200@100
-	Pen.scale(scale, scale);
 	Pen.rotate(rotation);
-	Pen.rotate(pi);
-	// Pen.scale(1);
-	Pen.translate(0,-100);
-    Pen.moveTo(0@0);
-    Pen.lineTo(50@100);
-    Pen.lineTo(100@100);
-    Pen.lineTo(0@150);
-    Pen.lineTo(-100@100);
-    Pen.lineTo(-50@100);
-    Pen.lineTo(0@0);
-    Pen.fill;
-	Pen.translate(0,100);
-	Pen.rotate(-pi);
+    Pen.addWedge((0)@(0), dotSize, 0.4pi, 0.2pi);
+    Pen.perform(\fill);
 	Pen.rotate(rotation.neg);
-	Pen.scale(scale.reciprocal, scale.reciprocal);
-	Pen.translate(x.neg,y.neg); // 0@0 is now 200@100
+	Pen.translate(x.neg,y.neg);
 };
 
 
-/*
-~drawArrow ={|rotation = 0, x = 200, y = 200, scale = 0.1|
-	Pen.fillColor = Color.red;
-    Pen.addOval(Rect(x - 2.5,y - 2.5,5, 5));
-	Pen.strokeColor = Color.red;
-	Pen.moveTo(x@y);
-	Pen.rotate(rotation);
-	Pen.lineTo((x + 100)@y);
-	Pen.rotate(rotation.neg);
-	Pen.fill;
-	Pen.fillStroke;
-};
-*/
+~monitorWindow = {
 
+~visualize = true;
+~refreshTask = Task({inf.do({ if((w != nil) && ~visualize, {w.refresh} ); 0.02.wait; }); },AppClock).start;
+~canvasSize = 600;
 
+	~scaleDown = 0.4;
 
+w = Window.new("HOA Scene Test", Rect(10,10,~canvasSize * 2,~canvasSize));
+w.front;
 
 w.drawFunc = {
     Pen.use {
-		var dotSize, xL, yL, scale, relBounds;
-		dotSize = 10;
+		var dotSize, xL, yL, scale, halfDotSize;
+		dotSize = 8;
+		halfDotSize = dotSize * 0.5;
 		scale = 50;
-		relBounds = 300;
 
-		~absSourcePositions.do(
+		~absSourcePositionsMeters.do(
 			{|item, i|var x, y;
-				x = item.x.linlin(45.506792, 45.508117, scale.neg * ~normalCorrection, scale * ~normalCorrection);
-				y = item.y.linlin(-73.568541, -73.566205, scale.neg, scale);
-        //Pen.translate(0, 0);
-        Pen.addOval(Rect(x + 200,y + 200,dotSize,dotSize));
-		Pen.fillAxialGradient(w.view.bounds.leftTop, w.view.bounds.rightBottom, Color.blue, Color.blue);
-        i.asString.drawCenteredIn(Rect(x + 200,y + 200,dotSize,dotSize), Font("Monaco", 8), Color.white);
+				x = item.x.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
+				y = item.y.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
+		Pen.color = Color.hsv(~relSourcePositionsSpherical[i].theta.abs.linlin(0,pi, 0.0, 1.0), 1 , 1 , 1);
+		Pen.addArc((x + (~canvasSize * 0.5))@(y+(~canvasSize * 0.5)), dotSize, 2pi, 2pi);
+        Pen.perform(\stroke);
+        i.asString.drawCenteredIn(Rect(x + (~canvasSize * 0.5) - halfDotSize,y + (~canvasSize * 0.5) - halfDotSize,dotSize,dotSize), Font("Times", 8), Color.black);
 		});
 		// draw Listener:
-		xL = ~listenerPositions.x.linlin(45.506792,45.508117, scale.neg * ~normalCorrection, scale * ~normalCorrection);
-	    yL = ~listenerPositions.y.linlin(-73.568541, -73.566205, scale.neg, scale);
-		~drawArrow.(~listenerOrientation, xL + 200, yL + 200);
+		xL = ~listenerPositionMeters.x.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
+	    yL = ~listenerPositionMeters.y.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
+		~drawArrow.(~listenerOrientation, xL + (~canvasSize * 0.5), yL + (~canvasSize * 0.5), dotSize * 2);
 
-		~relSourcePositions.do(
+
+		~relSourcePositionsMeters.do(
 			{|item, i|var x, y;
-				x = item.x.linlin(relBounds.neg, relBounds, scale.neg * 2, scale * 2);
-				y = item.y.linlin(relBounds.neg, relBounds, scale.neg * 2, scale * 2);
-        //Pen.translate(450, 0);
-        Pen.addOval(Rect(x + 650,y + 200,dotSize,dotSize));
-		Pen.fillAxialGradient(w.view.bounds.leftTop, w.view.bounds.rightBottom, Color.blue, Color.blue);
-        i.asString.drawCenteredIn(Rect(x + 650,y + 200,dotSize,dotSize), Font("Monaco", 8), Color.white);
-		});
+				x = item.x.linlin( ~playGroundDiameter * -1.0, ~playGroundDiameter * 1.0, ~canvasSize * ~scaleDown.neg * 2, ~canvasSize * ~scaleDown * 2);
+				y = item.y.linlin( ~playGroundDiameter * -1.0, ~playGroundDiameter * 1.0, ~canvasSize * ~scaleDown.neg * 2, ~canvasSize * ~scaleDown * 2);
+
+	    Pen.color = Color.hsv(~relSourcePositionsSpherical[i].theta.abs.linlin(0,pi, 0.0, 1.0), 1 , 1 , 1);
+		Pen.addArc((x + (~canvasSize + (~canvasSize * 0.5)))@(y+(~canvasSize * 0.5)), dotSize, 2pi, 2pi);
+        Pen.perform(\stroke);
+        i.asString.drawCenteredIn(Rect(x + (~canvasSize + (~canvasSize * 0.5)) - halfDotSize,y + (~canvasSize * 0.5) - halfDotSize,dotSize,dotSize), Font("Times", 8), Color.black);
+
+			});
 		// draw Listener:
-		xL = 200.0;
-	    yL = 200.0;
-		~drawArrow.(0, xL + 450, yL);
+		xL = (~canvasSize + (~canvasSize * 0.5));
+	    yL = (~canvasSize * 0.5);
+		~drawArrow.(0, xL, yL, dotSize * 2);
     };
 };
 w.refresh;
+}
 )
 
 
 
 
-
-
-~absSourcePositions.do({|item,i| item.x.linlin(45.506792,45.508117, 50.neg, 50).postln})
-
-
-
-~absSourcePositions.do({|item,i| item.y.linlin(-73.568541, -73.566205, 50.neg, 50).postln})
-
-
-~relSourcePositionsSpherical
-
-
-Spherical
+~relSourcePositionsSpherical[0].phi.abs.linlin(0,pi, 0.0, 1.0)
+Color.hsv( ~relSourcePositionsSpherical[0].phi.abs.linlin(0,pi, 0.0, 1.0), 1 , 1 , 1);
