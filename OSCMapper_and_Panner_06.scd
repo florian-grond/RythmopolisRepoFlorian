@@ -1,22 +1,46 @@
-~bootTheServer.();
-~numVoices = 64;
+(
+~oscVerbose = false;
 
-~configDSP.(false);
+~numVoices = 64;
+~bootTheServer.();
+
+
+~configDSP.(true);
+
+)
+
+
+
+
+
+
+
+
+
+(
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
-
 ~positioningSetup.();
-
 ~loadOSCResponders.();
+~monitorWindow.();
+
+
+
+
+)
+
+
+
 ~oscVerbose = false;
 ~oscVerbose = true;
 OSCdef.trace(true);
 OSCdef.trace(false);
 
-~monitorWindow.()
 ~refreshTask.stop;
 ~refreshTask.start;
+
+
 
 (
 ~bootTheServer = {
@@ -36,12 +60,12 @@ o.device = nil;
 // o.numInputBusChannels = 9; // Set nuber of input channels
 // o.numOutputBusChannels = 9; // Set nuber of output channels
 
-o.numAudioBusChannels = 2048 * 2; // these are the internal max number of audiobusses
-o.blockSize = 512 * 2; // the blocksize
-o.numWireBufs = 1024 * 2; // number of wired buffers
+o.numAudioBusChannels = 2048 * 1; // these are the internal max number of audiobusses
+o.blockSize = 512 * 1; // the blocksize
+o.numWireBufs = 1024 * 4; // number of wired buffers
 o.memSize = 2.pow(18); // the memory of the server
 o.sampleRate = 48000;
-o.threads_(8); // the number of threads supernova is using
+o.threads_(2); // the number of threads supernova is using
 s.reboot; // reboot (kill existing server, if running)
 };
 
@@ -50,10 +74,15 @@ s.reboot; // reboot (kill existing server, if running)
 s.doWhenBooted ({
 		s.makeWindow; // make a Window
 		s.scope(25,0, 4096, 2); // make a scope window with 64 channels starting at channel 64,
-		s.plotTree; // plot the DSP Tree
+		// s.plotTree; // plot the DSP Tree
 
 Routine.run
-{		s.sync;
+{
+		~converterMatrix = FoaEncoderMatrix.newHoa1(\acn, \n3d);
+
+			~binauralDecoder = FoaDecoderKernel.newCIPIC;
+
+		s.sync;
 
 	SynthDef(\pannerAzDist,
 	{|az = 0.78539816339745, dist =1, gain = 0, out= 6, freq = 880, delay = 0.5|
@@ -65,67 +94,74 @@ Routine.run
 
 	    s.sync;
 
+
 	if(testOnLaptop,
 				{
 				SynthDef(\pannerAzDistIn,
-	            {|az = 0.78539816339745, elev = 0, gain = 0.1, i_out= 6, i_inBus = 0|
+	            {|az = 0.78539816339745, elev = 0, i_gain = 0.1, i_out= 6, i_inBus = 0|
                  var pannedSig, in;
 			     in = In.ar(20, 1);
-			     pannedSig = HOAEncoder.ar(1, in , az.varlag(0.1), elev.varlag(0.1), 0, 0);
-			     Out.ar(i_out, pannedSig * gain)
+			     // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
+				 pannedSig = FoaPanB.ar(in , az, elev);
+				 // pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
+			     Out.ar(i_out, pannedSig * i_gain)
 		         }).add;
 				}
 				,
 				{
 	            SynthDef(\pannerAzDistIn,
-	            {|az = 0.78539816339745, elev = 0, gain = 0.1, i_out= 6, i_inBus = 0|
+	            {|az = 0.78539816339745, elev = 0, i_gain = 0.1, i_out= 6, i_inBus = 0|
                 var pannedSig, in;
 			    in = SoundIn.ar(i_inBus);
-			    pannedSig = HOAEncoder.ar(1, in , az.varlag(0.1), elev.varlag(0.1), 0, 0);
-			    Out.ar(i_out, pannedSig * gain)
+			    // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
+				 pannedSig = FoaPanB.ar(in , az, elev);
+				// pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
+			    Out.ar(i_out, pannedSig * i_gain)
 		        }).add;
 				}
 			);
 
 		s.sync;
 
-
-
 		~decoderGroup = ParGroup.new();
 
 		s.sync;
 
-			~decoder = {|azi|
-		           var sig, rotated, decoded;
+			~decoder = {|azi = 0|
+		           var sig, converted, rotated, decoded;
 		           sig = In.ar(6,4);
-		           rotated = HOATransRotateAz.ar(1, sig, azi);
-		           decoded = HOADecBinaural.ar(1, rotated, 0, 0);
+				   converted = FoaEncode.ar(sig, ~converterMatrix);
+		           rotated = FoaRotate.ar(sig, -0.5pi);
+		           decoded = FoaDecode.ar(rotated, ~binauralDecoder);
 		           // [decoded, sig].flatten;
-				 Out.ar(0,[sig,decoded].flatten);
+				 Out.ar(0,[ decoded, converted ].flatten);
 	            }.play(~decoderGroup);
 	    s.sync;
 
 		~parPanners = ParGroup.new();
 
 		s.sync;
-			if(testOnLaptop,{~testSine = { Out.ar(20, WhiteNoise.ar(0.1)      /*SinOsc.ar(440, 0, 1)*/ );}.play(~parPanners);});
-
+			if(testOnLaptop,{~testSine = { Out.ar(20, WhiteNoise.ar(0.1) /* SinOsc.ar(440, 0, 1) */);}.play(~parPanners);});
 	    s.sync;
 
 	   ~sources = {|i| Synth(\pannerAzDistIn,
 		 [\az, 2pi.rand,
-	      \elev, (pi * 0.5).rand,
+	      \elev, 0,
 		  \inBus, i,
 		  // \dist, 0.1+ 200.rand,
-		  \gain,0.015,
+		  \i_gain,0.015,
 		  \freq, i.linexp(0,~numVoices, 200, 2000),
 		 //  \delay, i.linlin(0,~numVoices, 0.0, 0.5)
 		 //  \delay, 0.5.rand
 		] ,	~parPanners, \addToHead )}!~numVoices;
 
+	    s.sync;
 
-
-
+        ~lowerLimitPlayground = (-73.568541)@(45.506792);
+        ~upperLimitPlayground = (-73.566205)@(45.508117);
+        ~positioningSetup.();
+        ~loadOSCResponders.();
+			{~monitorWindow.();}.defer;
 
 } // close Routine run
 	} ) // close doWhenBooted
@@ -134,15 +170,15 @@ Routine.run
 
 ~toMeters = {|pointLonLatElev|
 	Cartesian((pointLonLatElev.x - ~longMid) * ~mPerDegLon,
-		      (pointLonLatElev.y - ~latMid) * ~mPerDegLat,
+		      (pointLonLatElev.y - ~latMid) * ~mPerDegLat.neg,
 		       pointLonLatElev.z - ~elevMid);
              };
 
 ~absToRelAllSources = {~absSourcePositionsMeters.collect({|item,i|
-		                             (item - ~listenerPositionMeters).rotate(~listenerOrientation.neg)
+		                             (item - ~listenerPositionMeters).rotate(~listenerOrientationAz.neg)
 	                                   });};
 
-~absToRelSource = {|cartAbsSourcePos| (cartAbsSourcePos - ~listenerPositionMeters).rotate(~listenerOrientation.neg) };
+~absToRelSource = {|cartAbsSourcePos| (cartAbsSourcePos - ~listenerPositionMeters).rotate(~listenerOrientationAz.neg) };
 
 ~positioningSetup=
 {
@@ -160,19 +196,20 @@ Routine.run
 ~mPerDegLon =  111412.84  * ( ~latMidRad ).cos -  (93.5 * (3*~latMidRad).cos);
 
 
-~absSourcePositionsLongLat = {Cartesian(1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
-		                         1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
-		                         10.0.rand)
+~absSourcePositionsLongLat = {Cartesian(0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+		                         0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+		                         0.0.rand)
 	                   }!~numVoices;  // make an array of numVoices
 
 ~absSourcePositionsMeters = ~absSourcePositionsLongLat.collect({|item,i| ~toMeters.(item) });
 
-~listenerPositionLongLat = Cartesian(1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
-		                         1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+~listenerPositionLongLat = Cartesian(0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+		                         0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
 		                         0.0);
 ~listenerPositionMeters = ~toMeters.(~listenerPositionLongLat) ;
 
-~listenerOrientation = 0.0;
+~listenerOrientationAz = 0.0;
+~listenerOrientationEle = 0.0;
 
 ~relSourcePositionsMeters = ~absToRelAllSources.();
 
@@ -187,9 +224,10 @@ Routine.run
 
 
 
+
+
 ~loadOSCResponders =
 {
-~oscVerbose = false;
 
 OSCdef.freeAll;
 
@@ -217,7 +255,8 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
 		~listenerPositionLongLat.y = msg[2];
 		~listenerPositionLongLat.z = msg[3];
 			       // register Azimuth Orientation
-	    ~listenerOrientation = msg[4];
+	    ~listenerOrientationAz = msg[4];
+	    ~listenerOrientationEle = msg[5];
                    // convert Listener Position To Meters
 		~listenerPositionMeters = ~toMeters.(~listenerPositionLongLat) ;
 		           // update all Sources to New realtive Positions
@@ -244,7 +283,7 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
 ~monitorWindow = {
 
 ~visualize = true;
-~refreshTask = Task({inf.do({ if((w != nil) && ~visualize, {w.refresh} ); 0.02.wait; }); },AppClock).start;
+~refreshTask = Task({inf.do({ if((w != nil) && ~visualize, {w.refresh} ); 0.3.wait; }); },AppClock).start;
 ~canvasSize = 600;
 
 ~scaleDown = 0.4;
@@ -252,48 +291,70 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
 w = Window.new("HOA Scene Test", Rect(10,10,~canvasSize * 2,~canvasSize));
 w.front;
 
+m = NetAddr("127.0.0.1", 57120);
+
+	~slider2D = Slider2D(w, Rect(~canvasSize * 0.17,
+		                         ~canvasSize * 0.23,
+		                         ~canvasSize * 0.66,
+		                         ~canvasSize * 0.54)).y_(0.5).x_(0.5)
+	            .background_(Color(1,1,1,0))
+            .knobColor_(Color(1,1,1,0))
+	            .action_({|sl| // [sl.x, sl.y].postln;
+
+		m.sendMsg("/listener",  sl.x.linlin(0.0, 1.0, ~lowerLimitPlayground.x ,~upperLimitPlayground.x, nil ),
+	                            sl.y.linlin(0.0, 1.0, ~lowerLimitPlayground.y ,~upperLimitPlayground.y, nil ),
+	                    0.0,
+			0;)
+
+
+	});
+
+
 w.drawFunc = {
     Pen.use {
-		var dotSize, xL, yL, scale, halfDotSize;
+		var dotSize, halfDotSize, xL, yL;
 		dotSize = 8;
 		halfDotSize = dotSize * 0.5;
-		scale = 50;
 
 		~absSourcePositionsMeters.do(
 			{|item, i|var x, y;
 				x = item.x.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
 				y = item.y.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
-		Pen.color = Color.hsv(~relSourcePositionsSpherical[i].theta.abs.linlin(0,pi, 0.0, 1.0), 1 , 1 , 1);
+		Pen.color = Color.hsv(~relSourcePositionsSpherical[i].theta.linlin(-pi,pi, 0.0, 1.0), 1 , 1 , 1);
 		Pen.addArc((x + (~canvasSize * 0.5))@(y+(~canvasSize * 0.5)), dotSize, 2pi, 2pi);
-        Pen.perform(\stroke);
-        i.asString.drawCenteredIn(Rect(x + (~canvasSize * 0.5) - halfDotSize,y + (~canvasSize * 0.5) - halfDotSize,dotSize,dotSize), Font("Times", 8), Color.black);
+        Pen.perform(\fill);
+        i.asString.drawCenteredIn(Rect(x + (~canvasSize * 0.5) - halfDotSize,y + (~canvasSize * 0.5) - halfDotSize,dotSize,dotSize), Font("Times", 8), Color.grey);
 		});
 		// draw Listener:
 		xL = ~listenerPositionMeters.x.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
 	    yL = ~listenerPositionMeters.y.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
-		~drawArrow.(~listenerOrientation, xL + (~canvasSize * 0.5), yL + (~canvasSize * 0.5), dotSize * 2);
-
+		~drawArrow.(~listenerOrientationAz, xL + (~canvasSize * 0.5), yL + (~canvasSize * 0.5), dotSize * 4);
 
 		~relSourcePositionsMeters.do(
 			{|item, i|var x, y;
 				x = item.x.linlin( ~playGroundDiameter * -1.0, ~playGroundDiameter * 1.0, ~canvasSize * ~scaleDown.neg * 2, ~canvasSize * ~scaleDown * 2);
 				y = item.y.linlin( ~playGroundDiameter * -1.0, ~playGroundDiameter * 1.0, ~canvasSize * ~scaleDown.neg * 2, ~canvasSize * ~scaleDown * 2);
 
-	    Pen.color = Color.hsv(~relSourcePositionsSpherical[i].theta.abs.linlin(0,pi, 0.0, 1.0), 1 , 1 , 1);
+	    Pen.color = Color.hsv(~relSourcePositionsSpherical[i].theta.linlin(-pi,pi, 0.0, 1.0), 1 , 1 , 1);
 		Pen.addArc((x + (~canvasSize + (~canvasSize * 0.5)))@(y+(~canvasSize * 0.5)), dotSize, 2pi, 2pi);
-        Pen.perform(\stroke);
+        Pen.perform(\fill);
         i.asString.drawCenteredIn(Rect(x + (~canvasSize + (~canvasSize * 0.5)) - halfDotSize,y + (~canvasSize * 0.5) - halfDotSize,dotSize,dotSize), Font("Times", 8), Color.black);
 
 			});
 		// draw Listener:
 		xL = (~canvasSize + (~canvasSize * 0.5));
 	    yL = (~canvasSize * 0.5);
-		~drawArrow.(0, xL, yL, dotSize * 2);
+		~drawArrow.(0, xL, yL, dotSize * 4);
     };
 };
 w.refresh;
 }
 )
+
+
+
+
+Slider2D
 
 
 
