@@ -1,59 +1,46 @@
 (
 ~oscVerbose = false;
 
-~numVoices = 64;
-~bootTheServer.();
-
-
-~configDSP.(true);
-
-)
-
-
-
-
-
-
-
-
-
-(
+~numVoices = 128;
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
-~positioningSetup.();
-~loadOSCResponders.();
-~monitorWindow.();
 
+~bootTheServer.();
 
+~configDSP.(false);
 
 
 )
 
 
 
+
+/*
 ~oscVerbose = false;
 ~oscVerbose = true;
 OSCdef.trace(true);
 OSCdef.trace(false);
-
 ~refreshTask.stop;
 ~refreshTask.start;
-
-
+*/
 
 (
 ~bootTheServer = {
+
+Routine.run{
+
 Server.killAll;
+
 s = Server.internal; // Server.internal;
-Server.supernova;
+ Server.supernova;
 // Server.scsynth;
 // ServerOptions.devices;  // this line lists all available audio devices works only on Mac
 Server.internal = Server.default; // set the launched server to be the default server to make sure the masseages go to the right place
 o = Server.internal.options; // Get the local server's options
 // check what is listed as output from ServerOptions.devices and set the device correctly
 o.device = nil;
-// o.device = "112D";
+o.device = "112D";
  o.numInputBusChannels = 64; // Set nuber of input channels
  o.numOutputBusChannels = 64; // Set nuber of output channels
 
@@ -65,58 +52,58 @@ o.blockSize = 512 * 1; // the blocksize
 o.numWireBufs = 1024 * 4; // number of wired buffers
 o.memSize = 2.pow(18); // the memory of the server
 o.sampleRate = 48000;
-o.threads_(2); // the number of threads supernova is using
+o.threads_(1); // the number of threads supernova is using
+
 s.reboot; // reboot (kill existing server, if running)
+	}
+
 };
 
 ~configDSP =
 {|testOnLaptop|
 s.doWhenBooted ({
-		s.makeWindow; // make a Window
-		s.scope(25,0, 4096, 2); // make a scope window with 64 channels starting at channel 64,
-		// s.plotTree; // plot the DSP Tree
+
 
 Routine.run
 {
-		~converterMatrix = FoaEncoderMatrix.newHoa1(\acn, \n3d);
 
-			~binauralDecoder = FoaDecoderKernel.newCIPIC;
+		{
+		s.makeWindow; // make a Window
+		s.scope(10,0, 4096, 2); // make a scope window with 64 channels starting at channel 64,
+		// s.plotTree; // plot the DSP Tree
+		}.defer;
 
-		s.sync;
+		~converterMatrix = FoaEncoderMatrix.newHoa1(\acn, \sn3d);
+	    ~binauralDecoder = FoaDecoderKernel.newCIPIC;
+        ~micAngle = (131/2).degrad; // at 131 deg
+        ~micPattern = 0.5; // Cardioids
+		//~binauralDecoder = FoaDecoderMatrix.newStereo(~micAngle, ~micPattern);
 
-	SynthDef(\pannerAzDist,
-	{|az = 0.78539816339745, dist =1, gain = 0, out= 6, freq = 880, delay = 0.5|
-     var pannedSig, in;
-			in = DelayN.ar( BPF.ar( Decay.ar(Impulse.ar(2), 0.05, PinkNoise.ar(1)), freq, 0.002, 10), 3.0, delay);
-			pannedSig = HOAEncoder.ar(1, in , az.varlag(0.1), 0, 1, dist.varlag(0.1));
-			Out.ar(out, pannedSig * gain)
-		}).add;
 
 	    s.sync;
-
 
 	if(testOnLaptop,
 				{
 				SynthDef(\pannerAzDistIn,
-	            {|az = 0.78539816339745, elev = 0, i_gain = 0.1, i_out= 6, i_inBus = 0|
+	            {|az = 0.78539816339745, elev = 0, gain = 0.1, i_out= 11, i_inBus = 0|
                  var pannedSig, in;
 			     in = In.ar(20, 1);
 			     // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
 				 pannedSig = FoaPanB.ar(in , az, elev);
 				 // pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
-			     Out.ar(i_out, pannedSig * i_gain)
+			     Out.ar(i_out, pannedSig * gain)
 		         }).add;
 				}
 				,
 				{
 	            SynthDef(\pannerAzDistIn,
-	            {|az = 0.78539816339745, elev = 0, i_gain = 0.1, i_out= 6, i_inBus = 0|
+	            {|az = 0.78539816339745, elev = 0, gain = 0.1, i_out= 11, inBus = 0|
                 var pannedSig, in;
-			    in = SoundIn.ar(i_inBus);
+			    in = SoundIn.ar(inBus + 2);
 			    // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
 				 pannedSig = FoaPanB.ar(in , az, elev);
 				// pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
-			    Out.ar(i_out, pannedSig * i_gain)
+			    Out.ar(i_out, pannedSig * gain)
 		        }).add;
 				}
 			);
@@ -127,43 +114,43 @@ Routine.run
 
 		s.sync;
 
-			~decoder = {|azi = 0|
-		           var sig, converted, rotated, decoded;
-		           sig = In.ar(6,4);
-				   converted = FoaEncode.ar(sig, ~converterMatrix);
-		           rotated = FoaRotate.ar(sig, -0.5pi);
-		           decoded = FoaDecode.ar(rotated, ~binauralDecoder);
-		           // [decoded, sig].flatten;
-				 Out.ar(0,[ decoded, converted ].flatten);
-	            }.play(~decoderGroup);
+	    ~monitorAz1 = 0; ~monitorAz2 = 0; ~monitorElev1 = 0; ~monitorElev2 = 0;
+
+		~decoder = {|monitorAz1 = 0, monitorElev1 = 0, monitorAz2 = 0, monitorElev2 = 0|
+		           var sig, bFormatSN3D, adjust, rotatedFieldMonitor1, rotatedFieldMonitor2, binauralMonitor1, binauralMonitor2 ;
+		           sig = In.ar(11,4) ;
+				   adjust   = FoaRotate.ar(sig, -0.5pi) ;
+				   bFormatSN3D = HOAConverterFuma2AcnSn3d.ar( 1, adjust ) ;
+				rotatedFieldMonitor1 =  FoaRotate.ar( adjust, monitorAz1.neg ) ;
+				rotatedFieldMonitor2 =  FoaRotate.ar( adjust, monitorAz2     ) ;
+				binauralMonitor1     =  FoaDecode.ar( rotatedFieldMonitor1 , ~binauralDecoder)   ;
+				binauralMonitor2     =  FoaDecode.ar( rotatedFieldMonitor2 ,  ~binauralDecoder ) ;
+				//Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D,  SoundIn.ar( [0,1]) ].flatten );
+				Out.ar(0,[SoundIn.ar( [0,1]), bFormatSN3D, binauralMonitor1].flatten );
+			   }.play(~decoderGroup);
 	    s.sync;
 
 		~parPanners = ParGroup.new();
 
 		s.sync;
-			if(testOnLaptop,{~testSine = { Out.ar(20, WhiteNoise.ar(0.1) /* SinOsc.ar(440, 0, 1) */);}.play(~parPanners);});
+			if(testOnLaptop,{~testSine = { Out.ar(20, /*WhiteNoise.ar(0.1) */  SinOsc.ar(440, 0, 1) );}.play(~parPanners);});
 	    s.sync;
 
 	   ~sources = {|i| Synth(\pannerAzDistIn,
 		 [\az, 2pi.rand,
 	      \elev, 0,
 		  \inBus, i,
-		  // \dist, 0.1+ 200.rand,
-		  \i_gain,0.015,
-		  \freq, i.linexp(0,~numVoices, 200, 2000),
-		 //  \delay, i.linlin(0,~numVoices, 0.0, 0.5)
-		 //  \delay, 0.5.rand
+		  \gain,0.015,
 		] ,	~parPanners, \addToHead )}!~numVoices;
-
 	    s.sync;
 
         ~lowerLimitPlayground = (-73.568541)@(45.506792);
         ~upperLimitPlayground = (-73.566205)@(45.508117);
         ~positioningSetup.();
         ~loadOSCResponders.();
-			{~monitorWindow.();}.defer;
+		{~monitorWindow.();}.defer;
 
-} // close Routine run
+    } // close Routine run
 	} ) // close doWhenBooted
 };
 
@@ -228,7 +215,6 @@ Routine.run
 
 ~loadOSCResponders =
 {
-
 OSCdef.freeAll;
 
 {|i|
@@ -238,12 +224,15 @@ OSCdef.newMatching(("pos"++i).asSymbol, {|msg, time, addr, recvPort|
 		~absSourcePositionsLongLat[i].y = msg[2];
 		~absSourcePositionsLongLat[i].z = msg[3];
             // convert to Meters
-		~absSourcePositionsMeters[i] = ~toMeters.(~absSourcePositionsLongLat[i]).deepCopy;
+		~absSourcePositionsMeters[i] = ~toMeters.(~absSourcePositionsLongLat[i]);
 			// convert to Relative Position
 		~relSourcePositionsMeters[i] = ~absToRelSource.(~absSourcePositionsMeters[i]);
 			// convert to Relative Spherical
 		~relSourcePositionsSpherical[i] = ~relSourcePositionsMeters[i].asSpherical;
-		~sources[i].set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi );
+		// ~sources[i].set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi );
+
+		~sources.do( {|item, i| item.set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi ) });
+
 		if(~oscVerbose,{msg.postln});
 	}, ("/source/"++i++"/pos").asSymbol, nil);
 	}!~numVoices;
@@ -267,7 +256,28 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
 		~sources.do( {|item, i| item.set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi ) });
 		if(~oscVerbose,{msg.postln});
 	    },("/listener").asSymbol, nil);
+
+
+OSCdef.newMatching(("monitor1").asSymbol, {|msg, time, addr, recvPort|
+				   // register Lat Long Elev
+		~monitorAz1 = msg[1];
+		~monitorElev1 = msg[2];
+
+		~decoder.set(\monitorAz1, msg[1], \monitorElev1, msg[2] );
+		if(~oscVerbose,{msg.postln});
+	    },("/monitor1").asSymbol, nil);
+
+
+OSCdef.newMatching(("monitor2").asSymbol, {|msg, time, addr, recvPort|
+				   // register Lat Long Elev
+		~monitorAz2 = msg[1];
+		~monitorElev2 = msg[2];
+
+		if(~oscVerbose,{msg.postln});
+	    },("/monitor2").asSymbol, nil);
 };
+
+
 
 ~drawArrow ={|rotation = 0, x = 200, y = 200, dotSize = 8|
 	Pen.color = Color.red;
@@ -306,8 +316,17 @@ m = NetAddr("127.0.0.1", 57120);
 	                    0.0,
 			0;)
 
-
 	});
+
+/*
+	~monitorSlider = EZSlider(w, Rect(~canvasSize * 0.17,
+		                            ~canvasSize * 0.9,
+		                            ~canvasSize * 0.66,
+		                        20), "monitorAz", ControlSpec(-pi, pi ) )
+	            .setColors(Color.grey,Color.white)
+	            .action_({|sl| sl.value.postln;  m.sendMsg("/monitor1", sl.value.linlin(0,1, pi, -pi) ); });
+
+	*/
 
 
 w.drawFunc = {
@@ -354,10 +373,14 @@ w.refresh;
 
 
 
-Slider2D
+(
+
+
+~positioningSetup.();
+~loadOSCResponders.();
+~monitorWindow.();
 
 
 
 
-~relSourcePositionsSpherical[0].phi.abs.linlin(0,pi, 0.0, 1.0)
-Color.hsv( ~relSourcePositionsSpherical[0].phi.abs.linlin(0,pi, 0.0, 1.0), 1 , 1 , 1);
+)

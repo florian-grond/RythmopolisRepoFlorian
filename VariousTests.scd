@@ -182,7 +182,7 @@ m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimit
 		m.sendMsg("/listener",  0.0.linlin(-2.0, 2.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
 	                            0.0.linlin(-2.0, 2.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
 			                    0,
-			                    ~counter,
+			                    ~counter.linlin(0, 2pi, -pi, pi),
 			                    0.0
 			                      );
 		       0.2.wait;
@@ -199,7 +199,6 @@ m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimit
 (
 
 
-(
 m = NetAddr("127.0.0.1", 57120); // loopback
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/pos",
 	                     0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
@@ -207,7 +206,6 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 	                     0;
 ) } );
 
-)
 
 
 ~testTask = Task({
@@ -215,21 +213,51 @@ m = NetAddr("127.0.0.1", 57120); // loopback
     inf.do({
 		~counter = ~counter + 0.1;
 		if (~counter > 2pi,{~counter = 0});
-		m.sendMsg("/listener",  ~counter.cos.linlin((-2.0, 2.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
-	                            ~counter.sin.linlin((-2.0, 2.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+		m.sendMsg("/listener",  ~counter.cos.linlin(-2.0, 2.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                            ~counter.sin.linlin(-2.0, 2.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
 			                    0,
-			                    ~counter,
+			                    0,
 			                    0.0
 			                      );
-		       0.2.wait;
+		       0.1.wait;
     });
 }, AppClock ).stop;
 
 
 ~testTask.start
 )
+
 ~testTask.stop
 
+
+
+
+
+// MOVE the monitor rotate
+(
+m = NetAddr("127.0.0.1", 57120); // loopback
+~numVoices.do( {|i| m.sendMsg("/source/"++i++"/pos",
+	                     0.0.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
+	                     0.0.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
+	                     0;
+) } );
+
+
+~testTask = Task({
+	~counter = 1;
+    inf.do({
+		~counter = ~counter + 0.01;
+		if (~counter > 2pi,{~counter = 0});
+		m.sendMsg("/monitor1", ~counter.linlin(0,2pi, -pi, pi) ,0 );
+		       0.1.wait;
+    });
+    }, AppClock ).stop;
+
+
+~testTask.start
+)
+
+~testTask.stop
 
 
 
@@ -262,5 +290,15 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 
 
 
+(
 
+)
+
+
+
+~decoder.set(\monitorAz1, 0.0pi, \monitorElev1, 0 );
+
+m.sendMsg("/monitor1", 0.5pi , 0.0pi );
+
+~decoder.set
 
