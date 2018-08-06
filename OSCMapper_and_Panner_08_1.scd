@@ -23,17 +23,17 @@ OSCdef.trace(false);
 
 Server.killAll;
 
-s = Server.internal; // Server.internal;
+s = Server.local; // Server.internal;
 //  Server.supernova;
- Server.scsynth;
+Server.scsynth;
 // ServerOptions.devices;  // this line lists all available audio devices works only on Mac
-Server.local = Server.default; // set the launched server to be the default server to make sure the masseages go to the right place
+Server.default = Server.local; // set the launched server to be the default server to make sure the masseages go to the right place
 o = Server.local.options; // Get the local server's options
 // check what is listed as output from ServerOptions.devices and set the device correctly
 // o.device = nil;
 o.device = "JackRouter";
- o.numInputBusChannels = 64; // Set nuber of input channels
- o.numOutputBusChannels = 64; // Set nuber of output channels
+o.numInputBusChannels = 64; // Set nuber of input channels
+o.numOutputBusChannels = 64; // Set nuber of output channels
 
 o.numAudioBusChannels = 2048 * 1; // these are the internal max number of audiobusses
 o.blockSize = 128 * 2; // the blocksize
