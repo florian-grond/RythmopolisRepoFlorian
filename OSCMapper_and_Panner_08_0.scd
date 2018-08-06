@@ -1,6 +1,18 @@
-~bootTheServer.()
+~oscVerbose = false;
 
+~numVoices = 64;
 
+~lowerLimitPlayground = (-73.568541)@(45.506792);
+~upperLimitPlayground = (-73.566205)@(45.508117);
+
+(
+~bootTheServer.();
+
+~configDSP.(true);
+
+)
+
+~busOffset = 0;
 
 /*
 ~oscVerbose = false;
@@ -29,14 +41,13 @@ o.device = nil;
  o.numOutputBusChannels = 64; // Set nuber of output channels
 
 o.numAudioBusChannels = 2048 * 1; // these are the internal max number of audiobusses
-o.blockSize = 512 * 1; // the blocksize
+o.blockSize = 128 * 2; // the blocksize
 o.numWireBufs = 1024 * 4; // number of wired buffers
-o.memSize = 2.pow(18); // the memory of the server
+o.memSize = 8192 * 1; // the memory of the server
 o.sampleRate = 48000;
 // o.threads_(1); // the number of threads supernova is using
 
 s.reboot; // reboot (kill existing server, if running)
-
 
 };
 
@@ -45,21 +56,106 @@ s.reboot; // reboot (kill existing server, if running)
 s.doWhenBooted ({
 
 
+Routine.run{
+
+  ~binauralDecoder = FoaDecoderKernel.newCIPIC;
+  ~micAngle = (131/2).degrad; // at 131 deg
+  ~micPattern = 0.5; // Cardioids
+  // ~binauralDecoder = FoaDecoderMatrix.newStereo(~micAngle, ~micPattern);
+  ~converterMatrix = FoaEncoderMatrix.newHoa1(\acn, \sn3d);
+
+s.sync;
+
+~decoder = {|monitorAz1 = 0, monitorElev1 = 0, monitorAz2 = 0, monitorElev2 = 0|
+		           var sig, bFormatSN3D, adjust, rotatedFieldMonitor1, rotatedFieldMonitor2, binauralMonitor1, binauralMonitor2 ;
+		           sig = In.ar(11,4) ;
+				   adjust   = FoaRotate.ar(sig, -0.5pi) ;
+				   // bFormatSN3D = HOAConverterFuma2AcnSn3d.ar( 1, adjust ) ;
+				   bFormatSN3D = [adjust[0] * 2.sqrt, adjust[2], adjust[3]  * -1, adjust[1] * -1];
+				   rotatedFieldMonitor1 =  FoaRotate.ar( adjust, monitorAz1 ) ;
+				   rotatedFieldMonitor2 =  FoaRotate.ar( adjust, monitorAz2     ) ;
+				   binauralMonitor1     =  FoaDecode.ar( rotatedFieldMonitor1 , ~binauralDecoder)   ;
+				   binauralMonitor2     =  FoaDecode.ar( rotatedFieldMonitor2 ,  ~binauralDecoder ) ;
+				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D,  SoundIn.ar( [0,1]) ].flatten );
+				   // Out.ar(0,[SoundIn.ar( [0,1]), bFormatSN3D, binauralMonitor1].flatten );
+			       }.play;
+
+
+s.sync;
+
+~sources = {}!~numVoices;
+
+
+
+if(testOnLaptop,
+				{
+                  ~numVoices.do({|item,i |
+	              ~sources[i] =
+	              {|az = 0.0, elev = 0, gain = 0.1, i_out= 11, i_inBus = 0|
+                  var pannedSig, in;
+                  in = In.ar(20, 1);
+                  // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
+		          pannedSig = FoaPanB.ar(in , az , elev);
+	              // pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
+	              Out.ar(i_out, pannedSig * gain)
+                  }.play;
+                  s.sync;
+		          });
+				 }
+				,
+				{
+                  ~numVoices.do({|item,i |
+	              ~sources[i] =
+	              {|az = 0.0, elev = 0, gain = 0.1, i_out= 11, i_inBus = 0|
+                  var pannedSig, in;
+				  in = SoundIn.ar(i + ~busOffset);
+                  // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
+		          pannedSig = FoaPanB.ar(in , az , elev);
+	              // pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
+	              Out.ar(i_out, pannedSig * gain)
+                  }.play;
+                  s.sync;
+		          });
+				 }
+			);
+
+
+
+
+
+
+
+{ Out.ar(20, /* WhiteNoise.ar(0.1) */  SinOsc.ar(440, 0, 1) );}.play;
+
+
+        ~lowerLimitPlayground = (-73.568541)@(45.506792);
+        ~upperLimitPlayground = (-73.566205)@(45.508117);
+        ~positioningSetup.();
+        ~loadOSCResponders.();
+		{~monitorWindow.();}.defer;
+
+
+
+}
+
+
+
+/*
+
+
 Routine.run
 {
-
 		{
 		s.makeWindow; // make a Window
 		s.scope(10,0, 4096, 2); // make a scope window with 64 channels starting at channel 64,
-		// s.plotTree; // plot the DSP Tree
+		s.plotTree; // plot the DSP Tree
 		}.defer;
 
-		~converterMatrix = FoaEncoderMatrix.newHoa1(\acn, \sn3d);
-	    // ~binauralDecoder = FoaDecoderKernel.newCIPIC;
+		//~converterMatrix = FoaEncoderMatrix.newHoa1(\acn, \sn3d);
+	    ~binauralDecoder = FoaDecoderKernel.newCIPIC;
         ~micAngle = (131/2).degrad; // at 131 deg
         ~micPattern = 0.5; // Cardioids
 		~binauralDecoder = FoaDecoderMatrix.newStereo(~micAngle, ~micPattern);
-
 
 	    s.sync;
 
@@ -125,15 +221,19 @@ Routine.run
 		] ,	~parPanners, \addToHead )}!~numVoices;
 	    s.sync;
 
-			/*
-        ~lowerLimitPlayground = (-73.568541)@(45.506792);
-        ~upperLimitPlayground = (-73.566205)@(45.508117);
-        ~positioningSetup.();
-        ~loadOSCResponders.();
-		{~monitorWindow.();}.defer;
-			*/
+
 
     } // close Routine run
+
+
+
+		*/
+
+
+
+
+
+
 	} ) // close doWhenBooted
 };
 
@@ -212,9 +312,9 @@ OSCdef.newMatching(("pos"++i).asSymbol, {|msg, time, addr, recvPort|
 		~relSourcePositionsMeters[i] = ~absToRelSource.(~absSourcePositionsMeters[i]);
 			// convert to Relative Spherical
 		~relSourcePositionsSpherical[i] = ~relSourcePositionsMeters[i].asSpherical;
-		// ~sources[i].set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi );
+		~sources[i].set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi );
 
-		~sources.do( {|item, i| item.set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi ) });
+		// ~sources.do( {|item, i| item.set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi ) });
 
 		if(~oscVerbose,{msg.postln});
 	}, ("/source/"++i++"/pos").asSymbol, nil);
@@ -356,16 +456,6 @@ w.refresh;
 
 
 
-~oscVerbose = false;
-
-~numVoices = 128;
-
-~lowerLimitPlayground = (-73.568541)@(45.506792);
-~upperLimitPlayground = (-73.566205)@(45.508117);
-
-~bootTheServer.();
-
-~configDSP.(false);
 
 )
 
