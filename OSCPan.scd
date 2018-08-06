@@ -81,9 +81,9 @@ CHANGE THE OUTPUT HERE
 
 */
 
-				   //Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D,  SoundIn.ar( [0,1]) ].flatten );
+				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
 
-				   Out.ar(0,[SoundIn.ar( [0,1]), bFormatSN3D, binauralMonitor1].flatten );
+//				   Out.ar(0,[SoundIn.ar( [0,1]), bFormatSN3D, binauralMonitor1, binauralMonitor2].flatten );
 			       }.play;
 
 
