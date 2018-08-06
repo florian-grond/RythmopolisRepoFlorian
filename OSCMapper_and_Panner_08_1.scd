@@ -30,8 +30,8 @@ s = Server.internal; // Server.internal;
 Server.local = Server.default; // set the launched server to be the default server to make sure the masseages go to the right place
 o = Server.local.options; // Get the local server's options
 // check what is listed as output from ServerOptions.devices and set the device correctly
-o.device = nil;
-// o.device = "112D";
+// o.device = nil;
+o.device = "JackRouter";
  o.numInputBusChannels = 64; // Set nuber of input channels
  o.numOutputBusChannels = 64; // Set nuber of output channels
 
