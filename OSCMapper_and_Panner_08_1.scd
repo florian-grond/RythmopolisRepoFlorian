@@ -10,10 +10,7 @@ OSCdef.trace(false);
 
 
 
-
-
 ~busOffset = 0;
-
 
 ~oscVerbose = false;
 
@@ -21,8 +18,6 @@ OSCdef.trace(false);
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
-
-
 
 
 
