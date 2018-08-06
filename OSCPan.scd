@@ -1,14 +1,14 @@
 (
 
-~oscVerbose = true;
+~oscVerbose = false;
 
 ~busOffset = 0;
 
 ~numVoices = 64 - ~busOffset;
 
-~simulateInput = true;
+~simulateInput = false;
 
-~window = true;
+~window = false;
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
