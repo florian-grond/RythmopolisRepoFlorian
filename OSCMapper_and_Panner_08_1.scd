@@ -1,19 +1,15 @@
 (
-/*
-~oscVerbose = false;
-~oscVerbose = true;
-OSCdef.trace(true);
-OSCdef.trace(false);
-~refreshTask.stop;
-~refreshTask.start;
-*/
 
+~oscVerbose = true;
+~refreshTask.stop;
 
 ~busOffset = 0;
 
-~oscVerbose = false;
+~numVoices = 64 - ~busOffset;
 
-~numVoices = 64;
+
+~window = true;
+
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
@@ -30,8 +26,8 @@ Server.scsynth;
 Server.default = Server.local; // set the launched server to be the default server to make sure the masseages go to the right place
 o = Server.local.options; // Get the local server's options
 // check what is listed as output from ServerOptions.devices and set the device correctly
-// o.device = nil;
-o.device = "JackRouter";
+o.device = nil;
+// o.device = "JackRouter";
 o.numInputBusChannels = 64; // Set nuber of input channels
 o.numOutputBusChannels = 64; // Set nuber of output channels
 
@@ -127,7 +123,8 @@ if(testOnLaptop,
         ~upperLimitPlayground = (-73.566205)@(45.508117);
         ~positioningSetup.();
         ~loadOSCResponders.();
-		{~monitorWindow.();}.defer;
+			if(~window, { {~monitorWindow.();}.defer; });
+			if(~window, { ~refreshTask.start; });
 
 
 
@@ -371,7 +368,7 @@ OSCdef.newMatching(("monitor2").asSymbol, {|msg, time, addr, recvPort|
 ~monitorWindow = {
 
 ~visualize = true;
-~refreshTask = Task({inf.do({ if((w != nil) && ~visualize, {w.refresh} ); 0.3.wait; }); },AppClock).start;
+~refreshTask = Task({inf.do({ if((w != nil) && ~visualize, {w.refresh} ); 0.3.wait; }); },AppClock).stop;
 ~canvasSize = 600;
 
 ~scaleDown = 0.4;
