@@ -54,7 +54,7 @@ leave the ATK classes in the downloaded-quarks directory as is.
 
 ------------------
 
-5) fetch the resources HRIR and encoding decoding matrixes for the ATK  follow the installation instructions in these links
+5) fetch the resources for the ATK (HRIR and encoding decoding matrixes), follow the installation instructions in these links
 http://www.ambisonictoolkit.net/download/kernels/
 
 ATK Kernel Installation
