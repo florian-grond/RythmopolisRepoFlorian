@@ -87,10 +87,10 @@ s.sync;
 // CHANGE THE OUTPUT HERE
 
 // Listen over headphones to monitor 1 on [0,1]
-				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
+//				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
 
 // send bformat first
-//				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
+				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
 
 // send timecode first
 //				   Out.ar(0,[SoundIn.ar( {|i|i}!~nrTimeCodeChannels), bFormatSN3D, binauralMonitor1, binauralMonitor2 ].flatten );
