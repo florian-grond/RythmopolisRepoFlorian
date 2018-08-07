@@ -77,37 +77,30 @@ s.sync;
 		           sig = In.ar(11,4) ;
 				   adjust   = FoaRotate.ar(sig, -0.5pi) ;
 				   // convert 2 SN3D here
-				   bFormatSN3D = [adjust[0] * 2.sqrt, adjust[2], adjust[3]  * -1, adjust[1] * -1];
+				   bFormatSN3D = [adjust[0] * 2.sqrt, adjust[2], adjust[3], adjust[1]];
 				   rotatedFieldMonitor1 =  FoaRTT.ar( adjust, monitorAz1, monitorElev1);
 				   rotatedFieldMonitor2 =  FoaRTT.ar( adjust, monitorAz2, monitorElev2);
 				   binauralMonitor1     =  FoaDecode.ar( rotatedFieldMonitor1 ,  ~binauralDecoder ) ;
 				   binauralMonitor2     =  FoaDecode.ar( rotatedFieldMonitor2 ,  ~binauralDecoder ) ;
 
-
-
 //-----------------------------------------
 // CHANGE THE OUTPUT HERE
 
 // Listen over headphones to monitor 1 on [0,1]
-//				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D].flatten );
+				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
 
 // send bformat first
-				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
-
+//				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
 
 // send timecode first
-//				   Out.ar(0,[SoundIn.ar( {|i|i}!~nrTimeCodeChannels), bFormatSN3D, binauralMonitor1, binauralMonitor2].flatten );
+//				   Out.ar(0,[SoundIn.ar( {|i|i}!~nrTimeCodeChannels), bFormatSN3D, binauralMonitor1, binauralMonitor2 ].flatten );
 //-------------------------------------
 
-
-
 			       }.play;
-
 
 s.sync;
 
 ~sources = {}!~numVoices;
-
 
 if(testOnLaptop,
 				{
@@ -116,9 +109,7 @@ if(testOnLaptop,
 	              {|az = 0.0, elev = 0, gain = 0.1, i_out= 11, i_inBus = 0|
                   var pannedSig, in;
                   in = In.ar(20, 1);
-                  // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
 		          pannedSig = FoaPanB.ar(in , az , elev);
-	              // pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
 	              Out.ar(i_out, pannedSig * gain)
                   }.play;
                   s.sync;
@@ -131,9 +122,7 @@ if(testOnLaptop,
 	              {|az = 0.0, elev = 0, gain = 0.1, i_out= 11, i_inBus = 0|
                   var pannedSig, in;
 				  in = SoundIn.ar(i + ~busOffset);
-                  // pannedSig = HOAEncoder.ar(1, in , az, elev, 0, 0);
 		          pannedSig = FoaPanB.ar(in , az , elev);
-	              // pannedSig = FoaEncode.ar(in, FoaEncoderMatrix.newDirection(az,elev) );
 	              Out.ar(i_out, pannedSig * gain)
                   }.play;
                   s.sync;
@@ -151,7 +140,7 @@ if(testOnLaptop,
         ~upperLimitPlayground = (-73.566205)@(45.508117);
         ~positioningSetup.();
         ~loadOSCResponders.();
-			if(~window, { {~monitorWindow.(); ~refreshTask.start;}.defer; });
+		if(~window, { {~monitorWindow.(); ~refreshTask.start;}.defer; });
 
 }
 
@@ -238,8 +227,6 @@ OSCdef.newMatching(("pos"++i).asSymbol, {|msg, time, addr, recvPort|
 		~relSourcePositionsSpherical[i] = ~relSourcePositionsMeters[i].asSpherical;
 		~sources[i].set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi );
 
-		// ~sources.do( {|item, i| item.set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi ) });
-
 		if(~oscVerbose,{msg.postln});
 	}, ("/source/"++i++"/pos").asSymbol, nil);
 	}!~numVoices;
@@ -266,11 +253,10 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
 
 
 OSCdef.newMatching(("monitor1").asSymbol, {|msg, time, addr, recvPort|
-				   // register Lat Long Elev
+		// register az and ele
 		~monitorAz1 = msg[1];
 		~monitorElev1 = msg[2];
-		// msg[1].postln;
-		// msg[2].postln;
+		// [ msg[1], msg[2]].postln;
 
 		~decoder.set(\monitorAz1, msg[1], \monitorElev1, msg[2] );
 		if(~oscVerbose,{msg.postln});
@@ -278,16 +264,13 @@ OSCdef.newMatching(("monitor1").asSymbol, {|msg, time, addr, recvPort|
 
 
 OSCdef.newMatching(("monitor2").asSymbol, {|msg, time, addr, recvPort|
-				   // register Lat Long Elev
+	    // register az and ele
 		~monitorAz2 = msg[1];
 		~monitorElev2 = msg[2];
 
 		~decoder.set(\monitorAz2, msg[1], \monitorElev2, msg[2] );
 		if(~oscVerbose,{msg.postln});
 	    },("/monitor2").asSymbol, nil);
-
-
-
 
 
 // initialize all sources
@@ -380,6 +363,7 @@ w.drawFunc = {
 		dotSize = 8;
 		halfDotSize = dotSize * 0.5;
 
+		// draw Sources:
 		~absSourcePositionsMeters.do(
 			{|item, i|var x, y;
 				x = item.x.linlin( ~playGroundDiameter * -0.5, ~playGroundDiameter * 0.5, ~canvasSize * ~scaleDown.neg , ~canvasSize * ~scaleDown );
@@ -415,32 +399,10 @@ w.refresh;
 };
 
 
-
 ~bootTheServer.();
 ~configDSP.(~simulateInput);
 
-
 )
-
-/*
-
-(
-
-
-~positioningSetup.();
-~loadOSCResponders.();
-~monitorWindow.();
-
-
-
-
-)
-
-
-*/
-
-
-
 
 
 
