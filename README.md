@@ -30,6 +30,7 @@ If the folder Extensions/ does not exist, create it!
 ------------------
 
 put the SC3plugins folder into the folder Extension/
+
 /Users/yourUSRname/Library/Application Support/SuperCollider/Extensions
 
 ------------------
