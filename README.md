@@ -24,12 +24,12 @@ this will return on OSX:
 /Users/yourUSRname/Library/Application Support/SuperCollider
 
 option 2)
-in the IDE you can also go to File->Open user support directory
-If the folder Extensions does not exist, create it!
+in the IDE you can also go to File->Open user support directory.
+If the folder Extensions/ does not exist, create it!
 
 ------------------
 
-put the SC3plugins folder into the Extension folder
+put the SC3plugins folder into the folder Extension/
 /Users/yourUSRname/Library/Application Support/SuperCollider/Extensions
 
 ------------------
