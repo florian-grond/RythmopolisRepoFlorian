@@ -48,7 +48,7 @@ Recompile on the top right (button on the Quarks.gui window)
 ------------------
 
 4) After recompile (recompile also works from the IDE menu -> Language)
-If you see conflicts when recompiling remove all the the duplicate classes i.e. the .sc files from the ATK folder in the Extensions/SC3-plugins make sure you keep the .scx (the actual binary of the plugin)
+If you see conflicts when recompiling remove all the the duplicate classes (i.e. the .sc files) from the ATK folder in the Extensions/SC3-plugins make sure you keep the .scx (the actual binary of the plugin)
 
 leave the ATK classes in the downloaded-quarks directory as is.
 
