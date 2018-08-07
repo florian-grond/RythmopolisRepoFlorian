@@ -2,11 +2,10 @@
 
 ~oscVerbose = false;
 
-~nrTimeCodeChannels = 2; // if you set this to zero goto Line 87 and change the out bus setting
+~nrTimeCodeChannels = 0; // if you set this to zero goto Line 87 and change the out bus setting
 ~busOffset = ~nrTimeCodeChannels;
 
-~binauralHead = 165; // 21 is Kemar large pinnae, set to 165 for Kemar small pinnae
-
+~binauralHead = 21; // 21 is Kemar large pinnae, set to 165 for Kemar small pinnae
 
 ~numVoices = 64 - ~busOffset;
 
@@ -90,10 +89,10 @@ s.sync;
 // CHANGE THE OUTPUT HERE
 
 // Listen over headphones to monitor 1 on [0,1]
-				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D].flatten );
+//				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D].flatten );
 
 // send bformat first
-//				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
+				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
 
 
 // send timecode first
