@@ -11,16 +11,15 @@ https://github.com/supercollider/sc3-plugins/releases
 
 ------------------
 
-You need to know about 2 directories
-Extensions
-and  
-downloaded-quarks
+You need to know about 2 directories: ../Extensions/  and  ../downloaded-quarks/
 
 both reside in the user support directory. How to get there:
 
 option 1) start the IDE:
 evaluate the following code:
+
 Platform.userAppSupportDir
+
 this will return on OSX:
 /Users/yourUSRname/Library/Application Support/SuperCollider
 
