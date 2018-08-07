@@ -29,10 +29,10 @@ m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimit
 
 ~sources.do({| item,i | item.set(\gain, 0.0)       })
 
-~sources.do({| item,i | item.set(\gain, 0.1)       })
+~sources.do({| item,i | item.set(\gain, 0.01)       })
 
 
-~sources[3].set(\gain, 1.0)
+~sources[4].set(\gain, 1.0)
 
 
 
@@ -141,7 +141,7 @@ m.sendMsg("/listener",  1.0.rand.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upper
 m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimitPlayground.x),
 	                    0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.y,~upperLimitPlayground.y),
 	                    0.0,
-	                    pi.rand2;
+	                    0.0;
 
 
 )
@@ -296,7 +296,14 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 
 
 
+~decoder.set(\monitorAz1, msg[1], \monitorElev1, msg[2] );
+
+
 ~decoder.set(\monitorAz1, 0.0pi, \monitorElev1, 0 );
+
+~decoder.set(\monitorAz1, -0.5pi, \monitorElev1, 0 );
+
+s.scope
 
 m.sendMsg("/monitor1", 0.5pi , 0.0pi );
 
