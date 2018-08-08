@@ -9,7 +9,7 @@
 
 ~numVoices = 64 - ~busOffset;
 
-~simulateInput = true;
+~simulateInput = false;
 
 ~window = true;
 
@@ -58,9 +58,6 @@ s.reboot; // reboot (kill existing server, if running)
 ~configDSP =
 {|testOnLaptop|
 s.doWhenBooted ({
-
-
-
 
 Routine.run{
 
@@ -131,7 +128,7 @@ if(testOnLaptop,
 			);
 
 
-{ Out.ar(20,  WhiteNoise.ar(0.1) /*  SinOsc.ar(440, 0, 1) */  );}.play;
+if(testOnLaptop, {{ Out.ar(20,  WhiteNoise.ar(0.1) /*  SinOsc.ar(440, 0, 1) */  );}.play});
 
 
 		s.sync;
