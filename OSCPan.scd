@@ -1,6 +1,6 @@
 (
 
-~oscVerbose = false;
+~oscVerbose = 0; // 1 == true;
 
 ~nrTimeCodeChannels = 0; // if you set this to zero goto Line 87 and change the out bus setting
 ~busOffset = ~nrTimeCodeChannels;
@@ -9,9 +9,9 @@
 
 ~numVoices = 64 - ~busOffset;
 
-~simulateInput = false;
+~simulateInput = true;
 
-~window = true;
+~window = 1;  // 1  == true
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
@@ -51,13 +51,13 @@ o.memSize = 8192 * 1; // the memory of the server
 o.sampleRate = 48000;
 // o.threads_(1); // the number of threads supernova is using
 
-s.reboot; // reboot (kill existing server, if running)
+// s.reboot; // reboot (kill existing server, if running)
 
 };
 
 ~configDSP =
 {|testOnLaptop|
-s.doWhenBooted ({
+s.waitForBoot ({
 
 Routine.run{
 
@@ -84,10 +84,10 @@ s.sync;
 // CHANGE THE OUTPUT HERE
 
 // Listen over headphones to monitor 1 on [0,1]
-//				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
+				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
 
 // send bformat first
-				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
+//				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
 
 // send timecode first
 //				   Out.ar(0,[SoundIn.ar( {|i|i}!~nrTimeCodeChannels), bFormatSN3D, binauralMonitor1, binauralMonitor2 ].flatten );
@@ -137,7 +137,7 @@ if(testOnLaptop, {{ Out.ar(20,  WhiteNoise.ar(0.1) /*  SinOsc.ar(440, 0, 1) */  
         ~upperLimitPlayground = (-73.566205)@(45.508117);
         ~positioningSetup.();
         ~loadOSCResponders.();
-		if(~window, { {~monitorWindow.(); ~refreshTask.start;}.defer; });
+		if(~window == 1, { {~monitorWindow.(); ~refreshTask.start;}.defer; });
 
 }
 
@@ -224,7 +224,7 @@ OSCdef.newMatching(("pos"++i).asSymbol, {|msg, time, addr, recvPort|
 		~relSourcePositionsSpherical[i] = ~relSourcePositionsMeters[i].asSpherical;
 		~sources[i].set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi );
 
-		if(~oscVerbose,{msg.postln});
+		if(~oscVerbose == 1,{msg.postln});
 	}, ("/source/"++i++"/pos").asSymbol, nil);
 	}!~numVoices;
 
@@ -245,7 +245,7 @@ OSCdef.newMatching(("listener").asSymbol, {|msg, time, addr, recvPort|
         ~relSourcePositionsSpherical = ~relSourcePositionsMeters.collect({|item,i| item.asSpherical });
 
 		~sources.do( {|item, i| item.set(\az, ~relSourcePositionsSpherical[i].theta,	 \elev, ~relSourcePositionsSpherical[i].phi ) });
-		if(~oscVerbose,{msg.postln});
+		if(~oscVerbose == 1,{msg.postln});
 	    },("/listener").asSymbol, nil);
 
 
@@ -256,7 +256,7 @@ OSCdef.newMatching(("monitor1").asSymbol, {|msg, time, addr, recvPort|
 		// [ msg[1], msg[2]].postln;
 
 		~decoder.set(\monitorAz1, msg[1], \monitorElev1, msg[2] );
-		if(~oscVerbose,{msg.postln});
+		if(~oscVerbose == 1,{msg.postln});
 	    },("/monitor1").asSymbol, nil);
 
 
@@ -266,8 +266,30 @@ OSCdef.newMatching(("monitor2").asSymbol, {|msg, time, addr, recvPort|
 		~monitorElev2 = msg[2];
 
 		~decoder.set(\monitorAz2, msg[1], \monitorElev2, msg[2] );
-		if(~oscVerbose,{msg.postln});
+		if(~oscVerbose == 1,{msg.postln});
 	    },("/monitor2").asSymbol, nil);
+
+
+OSCdef.newMatching(("window").asSymbol, {|msg, time, addr, recvPort|
+	    // register az and ele
+		~window = msg[1];
+
+		case{~window == 1}
+		        {{~monitorWindow.(); ~refreshTask.start;}.defer;}
+            {~window == 0}
+		{{~w.close; ~refreshTask.stop}.defer};
+		if(~oscVerbose == 1,{msg.postln});
+	    },("/window").asSymbol, nil);
+
+
+OSCdef.newMatching(("oscVerbosity").asSymbol, {|msg, time, addr, recvPort|
+	    // register az and ele
+		~oscVerbose = msg[1];
+
+		if(~oscVerbose == 1,{msg.postln});
+	    },("/oscVerbosity").asSymbol, nil);
+
+
 
 
 // initialize all sources
@@ -288,7 +310,6 @@ m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimit
 };
 
 
-
 ~drawArrow ={|rotation = 0, x = 200, y = 200, dotSize = 8|
 	Pen.color = Color.red;
 	Pen.translate(x,y); // 0@0 is now 200@100
@@ -303,17 +324,17 @@ m.sendMsg("/listener",  0.5.linlin(0.0, 1.0, ~lowerLimitPlayground.x,~upperLimit
 ~monitorWindow = {
 
 ~visualize = true;
-~refreshTask = Task({inf.do({ if((w != nil) && ~visualize, {w.refresh} ); 0.3.wait; }); },AppClock).stop;
+~refreshTask = Task({inf.do({ if((~w != nil) && ~visualize, {~w.refresh} ); 0.3.wait; }); },AppClock).stop;
 ~canvasSize = 600;
 
 ~scaleDown = 0.4;
 
-w = Window.new("HOA Scene Test", Rect(10,10,~canvasSize * 2,~canvasSize));
-w.front;
+~w = Window.new("HOA Scene Test", Rect(10,10,~canvasSize * 2,~canvasSize));
+~w.front;
 
 m = NetAddr("127.0.0.1", 57120);
 
-	~slider2D = Slider2D(w, Rect(~canvasSize * 0.17,
+	~slider2D = Slider2D(~w, Rect(~canvasSize * 0.17,
 		                         ~canvasSize * 0.23,
 		                         ~canvasSize * 0.66,
 		                         ~canvasSize * 0.54)).y_(0.5).x_(0.5)
@@ -331,7 +352,7 @@ m = NetAddr("127.0.0.1", 57120);
 
 
 
-		~monitorSlider1 = Slider2D(w, Rect(~canvasSize * 0.17,
+		~monitorSlider1 = Slider2D(~w, Rect(~canvasSize * 0.17,
 		                              28,
 		                              ~canvasSize * 0.66,
 		                               100)).x_(0.5).y_(0.5)
@@ -341,7 +362,7 @@ m = NetAddr("127.0.0.1", 57120);
 		m.sendMsg("/monitor1", mappedX, mappedY) });
 
 
-	    ~monitorSlider2 = Slider2D(w, Rect(~canvasSize * 0.17,
+	    ~monitorSlider2 = Slider2D(~w, Rect(~canvasSize * 0.17,
 		                              ~canvasSize * 0.78,
 		                              ~canvasSize * 0.66,
 		                               100)).x_(0.5).y_(0.5)
@@ -354,7 +375,7 @@ m = NetAddr("127.0.0.1", 57120);
 
 
 
-w.drawFunc = {
+~w.drawFunc = {
     Pen.use {
 		var dotSize, halfDotSize, xL, yL;
 		dotSize = 8;
@@ -392,9 +413,11 @@ w.drawFunc = {
 		~drawArrow.(0, xL, yL, dotSize * 4);
     };
 };
-w.refresh;
+~w.refresh;
 };
 
+CmdPeriod.add({Window.closeAll}.defer);
+{Window.closeAll}.defer;
 
 ~bootTheServer.();
 ~configDSP.(~simulateInput);

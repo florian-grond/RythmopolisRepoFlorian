@@ -5,6 +5,14 @@
 OSCdef.trace(true);
 OSCdef.trace(false);
 
+
+
+m = NetAddr("127.0.0.1", 57120); // loopback
+
+m.sendMsg("/window",  0);
+m.sendMsg("/window",  1);
+
+
 m = NetAddr("127.0.0.1", 57120); // loopback
 (
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/pos",
