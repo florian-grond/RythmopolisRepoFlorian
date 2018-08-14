@@ -9,7 +9,7 @@
 
 ~numVoices = 64 - ~busOffset;
 
-~simulateInput = true;
+~simulateInput = false;
 
 ~window = 1;  // 1  == true
 
@@ -255,6 +255,8 @@ OSCdef.newMatching(("monitor1").asSymbol, {|msg, time, addr, recvPort|
 		~monitorElev1 = msg[2];
 		// [ msg[1], msg[2]].postln;
 
+		if( ~w.isClosed != true , { "GUIalive".postln;  {~monitorSlider1.setXY(~monitorAz1.linlin(-pi,pi, 0, 1), ~monitorElev1.linlin(-0.5pi, 0.5pi, 0, 1) )}.defer; } );
+
 		~decoder.set(\monitorAz1, msg[1], \monitorElev1, msg[2] );
 		if(~oscVerbose == 1,{msg.postln});
 	    },("/monitor1").asSymbol, nil);
@@ -264,6 +266,8 @@ OSCdef.newMatching(("monitor2").asSymbol, {|msg, time, addr, recvPort|
 	    // register az and ele
 		~monitorAz2 = msg[1];
 		~monitorElev2 = msg[2];
+
+		if( ~w.isClosed != true , { "GUIalive".postln; {~monitorSlider2.setXY(~monitorAz2.linlin(-pi,pi, 0, 1), ~monitorElev2.linlin(-0.5pi, 0.5pi, 0, 1) )}.defer; } );
 
 		~decoder.set(\monitorAz2, msg[1], \monitorElev2, msg[2] );
 		if(~oscVerbose == 1,{msg.postln});

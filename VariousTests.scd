@@ -13,6 +13,11 @@ m.sendMsg("/window",  0);
 m.sendMsg("/window",  1);
 
 
+~refreshTask
+
+Task
+
+
 m = NetAddr("127.0.0.1", 57120); // loopback
 (
 ~numVoices.do( {|i| m.sendMsg("/source/"++i++"/pos",
@@ -314,6 +319,9 @@ m = NetAddr("127.0.0.1", 57120); // loopback
 s.scope
 
 m.sendMsg("/monitor1", 0.5pi , 0.0pi );
+
+m.sendMsg("/monitor1", pi.rand2 , 0.5pi.rand2 );
+
 
 ~decoder.set
 
