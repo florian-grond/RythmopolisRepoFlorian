@@ -11,7 +11,7 @@
 
 ~simulateInput = false;
 
-~window = 1;  // 1  == true
+~window = 0;  // 1  == true
 
 ~lowerLimitPlayground = (-73.568541)@(45.506792);
 ~upperLimitPlayground = (-73.566205)@(45.508117);
@@ -42,7 +42,7 @@ o = Server.local.options; // Get the local server's options
 //o.device = nil;
 o.device = "JackRouter";
 o.numInputBusChannels = 64; // Set nuber of input channels
-o.numOutputBusChannels = 64; // Set nuber of output channels
+o.numOutputBusChannels = 16; // Set nuber of output channels
 
 o.numAudioBusChannels = 2048 * 1; // these are the internal max number of audiobusses
 o.blockSize = 128 * 2; // the blocksize
@@ -55,6 +55,7 @@ o.sampleRate = 48000;
 
 };
 
+
 ~configDSP =
 {|testOnLaptop|
 s.waitForBoot ({
@@ -62,6 +63,7 @@ s.waitForBoot ({
 Routine.run{
 
 			~binauralDecoder = FoaDecoderKernel.newCIPIC(~binauralHead);
+			// ~binauralDecoder = FoaDecoderKernel.newListen(~binauralHead);  // subjectID 1002 to 1059 (51 in total) WARNING: subjectIDs are not entirely contiguous.
             ~micAngle = (131/2).degrad; // at 131 deg
             ~micPattern = 0.5; // Cardioids
             // ~binauralDecoder = FoaDecoderMatrix.newStereo(~micAngle, ~micPattern);
@@ -84,10 +86,10 @@ s.sync;
 // CHANGE THE OUTPUT HERE
 
 // Listen over headphones to monitor 1 on [0,1]
-				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
+//				   Out.ar(0,[binauralMonitor1, binauralMonitor2, bFormatSN3D ].flatten );
 
 // send bformat first
-//				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
+				   Out.ar(0,[bFormatSN3D,  binauralMonitor1, binauralMonitor2 ].flatten );
 
 // send timecode first
 //				   Out.ar(0,[SoundIn.ar( {|i|i}!~nrTimeCodeChannels), bFormatSN3D, binauralMonitor1, binauralMonitor2 ].flatten );
